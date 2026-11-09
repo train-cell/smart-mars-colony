@@ -47,13 +47,14 @@
     - Έλλειμμα ισχύος 15.2 kW και πτώση αυτονομίας στις 1.97 h.
     - Αναστολή αναβλητών φορτίων και αύξηση αυτονομίας στις 2.68 h (κέρδος +42.29 λεπτά).
     - Εντολή Safe Stop στο rover λόγω ορατότητας 100 m (< 300 m).
-  - Έλεγχος χρόνου προσομοίωσης (`/senaria/tick`) και επαναφορά στην αρχική κατάσταση (`/senaria/epanapofora`).
+  - Έλεγχος χρόνου προσομοίωσης (`/prosomoiwsi/vima`) και επαναφορά στην αρχική κατάσταση (`/prosomoiwsi/epanafora`).
 - **Τεκμηρίωση & Συμβόλαια:**
   - Πλήρης σουίτα τεκμηρίωσης `docs/backend/00-17.md` στην ελληνική γλώσσα.
   - Συμβόλαια παράδοσης frontend (`docs/koino/symvolaio-frontend-backend.md`, `roes-epideiksis.md`, `antistoixisi-hta-norman-api.md`).
   - Εσωτερικές αναφορές παράδοσης ρόλων υποπρακτόρων (`docs/eswterika/paradoseis-praktorwn/`).
 
 ### Διορθώθηκε
+- Πλήρης συγχρονισμός όλων των παραδειγμάτων cURL, πινάκων ιχνηλασιμότητας και διαγραμμάτων HTA/Norman με τις τελικές διαδρομές REST API του backend.
 - Διόρθωση εισαγωγής `DexameniNerou` στο `backend/app/api/v1/poroi.py`.
 - Διόρθωση σύγκρισης boolean σε SQLAlchemy query (`MetavivasiDikaiwmatos.energo.is_(True)`).
 - Αφαίρεση περιττών εισαγωγών και διαμόρφωση κώδικα με βάση το Ruff.
