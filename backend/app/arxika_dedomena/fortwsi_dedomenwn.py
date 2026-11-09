@@ -10,17 +10,30 @@ from sqlalchemy.orm import Session
 
 from backend.app.montela import (
     Aisthitiras,
+    Apofasi,
     Apoikia,
+    ApostoliOximatos,
     ApothemaOxygonou,
     DexameniNerou,
+    EktelesiSenariou,
     EnergeiakoFortio,
+    Entoli,
     ExwterikosKindynos,
     Fwtovoltaiko,
+    IstorikoElegxou,
     KatastasiProsomoiwsis,
+    MetavivasiDikaiwmatos,
     MetrisiAisthitira,
     OximaExerevnis,
+    ProgrammaAnakyklwsis,
+    ProgrammaArdefsis,
+    ProgrammaFwtismou,
     RoiNerou,
     RolosXristiModel,
+    ShmeioDiadromis,
+    StigmiotypoSenariou,
+    SymvanEntolis,
+    Synagermos,
     SyskeviYpostiriksisZwis,
     Syssoreftis,
     Thermokipio,
@@ -34,8 +47,21 @@ from backend.app.pyrinas.asfaleia import XRHSTES_DEMO
 def arxikopoiisi_dedomenwn_epideiksis(synedria: Session, epanarxikopoiisi: bool = False) -> None:
     """Εισάγει τα δεδομένα εκκίνησης της αποικίας αν δεν υπάρχουν ήδη."""
     if epanarxikopoiisi:
-        # Διαγραφή υφιστάμενων εγγραφών με σεβασμό στα foreign keys
+        # Διαγραφή υφιστάμενων εγγραφών με σεβασμό στα foreign keys (παιδιά πριν από γονείς)
         for pinakas in [
+            SymvanEntolis,
+            Entoli,
+            IstorikoElegxou,
+            Synagermos,
+            Apofasi,
+            StigmiotypoSenariou,
+            EktelesiSenariou,
+            ProgrammaArdefsis,
+            ProgrammaFwtismou,
+            ProgrammaAnakyklwsis,
+            MetavivasiDikaiwmatos,
+            ShmeioDiadromis,
+            ApostoliOximatos,
             MetrisiAisthitira,
             Aisthitiras,
             SyskeviYpostiriksisZwis,

@@ -22,6 +22,42 @@
 ---
 
 ## 3. Μεταβίβαση Δικαιωμάτων (Role Delegation)
+
+### Διάγραμμα Ροής Μεταβίβασης & Ελέγχου Δικαιωμάτων
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Grantor as Συντονιστής / Εκχωρητής
+    actor Grantee as Αποδέκτης (π.χ. xristis_03)
+    participant API as API (/api/v1/dikaiwmata)
+    participant DB as Πίνακας metavivasi_dikaiwmatos
+    participant ProtectedAPI as Προστατευμένο Endpoint (π.χ. ECLSS)
+
+    Grantor->>API: POST /dikaiwmata/metavivasi (id_apodekti, rolos, TTL: 24h)
+    API->>DB: Αποθήκευση ενεργής μεταβίβασης + εγγραφή audit log
+    DB-->>API: id_metavivasis
+    API-->>Grantor: 200 OK (Επιτυχής εκχώρηση)
+
+    Note over Grantee, ProtectedAPI: Ο Αποδέκτης εκτελεί ενέργεια με το νέο ρόλο
+    Grantee->>ProtectedAPI: POST /xwroi-katoikisis/.../thermokrasia/entoles
+    ProtectedAPI->>DB: Έλεγχος άμεσου ρόλου & ενεργών μη-ληγμένων μεταβιβάσεων
+    DB-->>ProtectedAPI: Έγκυρη μεταβίβαση!
+    ProtectedAPI-->>Grantee: 200 OK (Εντολή εκτελέστηκε)
+
+    opt Ανάκληση Μεταβίβασης (Revocation)
+        Grantor->>API: POST /dikaiwmata/anaklisi (id_metavivasis)
+        API->>DB: Θέτει energo = False & καταγράφει audit log
+        DB-->>API: Ανακλήθηκε
+        API-->>Grantor: 200 OK
+        
+        Grantee->>ProtectedAPI: Επόμενο αίτημα
+        ProtectedAPI->>DB: Έλεγχος δικαιωμάτων
+        DB-->>ProtectedAPI: Ανενεργή μεταβίβαση!
+        ProtectedAPI-->>Grantee: 403 Forbidden (anarmodios_rolos)
+    end
+```
+
 Σε περιπτώσεις ανάπαυσης, έκτακτης ανάγκης ή κωλύματος:
 1. Ένας χρήστης (ή ο Συντονιστής) μπορεί να εκχωρήσει προσωρινά έναν ρόλο σε άλλον χρήστη (`POST /api/v1/dikaiwmata/metavivasi`).
 2. Η μεταβίβαση περιλαμβάνει:
@@ -43,4 +79,4 @@
   - `yposystima`: Το επηρεαζόμενο υποσύστημα.
   - `leptomereies`: Πλήρη δεδομένα παραμέτρων και αποτελέσματος σε μορφή JSON.
   - `xronos_katagrafis`: Χρονοσφραγίδα σε UTC.
-- Η πρόσβαση στο ιστορικό καταγραφών ελέγχου παρέχεται μέσω του endpoint `/api/v1/istoriko/audit-log`.
+- Η πρόσβαση στο ιστορικό καταγραφών ελέγχου παρέχεται μέσω του endpoint `/api/v1/istoriko-elegxou`.

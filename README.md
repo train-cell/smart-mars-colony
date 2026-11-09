@@ -1,5 +1,10 @@
 # Smart Mars Colony — Σύστημα Διαχείρισης Αποικίας στον Άρη (Backend)
 
+> [!TIP]
+> 🌟 **Κεντρική Παρουσίαση Έργου (Presentation & Academic Showcase):**
+> Για μια πλήρη, εξαντλητική διαδραστική παρουσίαση (slide-by-slide) ολόκληρου του backend για την αξιολόγηση και το frontend handoff, δείτε το:
+> **[`docs/backend/PAROUSIASI-BACKEND.md`](docs/backend/PAROUSIASI-BACKEND.md)**
+
 Το παρόν αποθετήριο περιέχει την πλήρη υλοποίηση του backend για την εκπαιδευτική προσομοίωση **Smart Mars Colony** (ακαδημαϊκό έτος 2026–2027). Το σύστημα υλοποιεί όλες τις απαραίτητες υπηρεσίες παρακολούθησης συνθηκών, ελέγχου υποστήριξης ζωής, διαχείρισης πόρων (νερό, ενέργεια), ασφάλειας αποστολών οχήματος εξερεύνησης (rover) και συντονισμού αντιμετώπισης καταιγίδας σκόνης.
 
 > [!IMPORTANT]
@@ -104,6 +109,7 @@ smart-mars-colony/
 
 ## Τεκμηρίωση & Συμβόλαιο Frontend
 
+- **🌟 Κεντρική Παρουσίαση Backend (Showcase Hub):** [`docs/backend/PAROUSIASI-BACKEND.md`](docs/backend/PAROUSIASI-BACKEND.md)
 - **Πλήρης Τεχνική Τεκμηρίωση Backend:** [`docs/backend/`](docs/backend/)
 - **Συμβόλαιο Διεπαφής Frontend-Backend:** [`docs/koino/symvolaio-frontend-backend.md`](docs/koino/symvolaio-frontend-backend.md)
 - **Ροές Επίδειξης (Θερμοκρασία, Άρδευση, Καταιγίδα):** [`docs/koino/roes-epideiksis.md`](docs/koino/roes-epideiksis.md)

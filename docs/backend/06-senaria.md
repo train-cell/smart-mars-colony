@@ -22,6 +22,46 @@
 ---
 
 ## 2. Σενάριο Καταιγίδας Σκόνης (Dust Storm Golden Scenario)
+
+### Διάγραμμα Ροής Σεναρίου Καταιγίδας
+
+```mermaid
+flowchart TD
+    subgraph Εκδήλωση["1. Έναρξη Καταιγίδας"]
+        Atmosphere["Αύξηση οπτικού βάθους τ = 2.5<br/>Ηλιακή ακτινοβολία: 300 -> 80 W/m²<br/>Συντελεστής σκόνης: 0.8 -> 0.5<br/>Εξωτερική θερμοκρασία: 213 -> 193 K<br/>Ορατότητα: 100 m, Επικοινωνία: 25%"]
+    end
+
+    subgraph Επιπτώσεις["2. Άμεσες Επιπτώσεις στην Αποικία"]
+        PV_Drop["Φωτοβολταϊκά: 4.8 kW -> 0.8 kW (-4.0 kW)"]
+        Heat_Rise["Θερμικές Απώλειες: 8.0 kW -> 10.0 kW (+2.0 kW)"]
+        Load_Crisis["Χωρίς Μετριασμό:<br/>Φορτία: 16.0 kW, Έλλειμμα: 15.2 kW<br/>ΑΥΤΟΝΟΜΙΑ: 1.97 ώρες (118.4 min)"]
+        Rover_Risk["Rover στα 2 km:<br/>Ενεργειακά εφικτό (0.3 kWh)<br/>ΑΛΛΑ ανασφαλές λόγω ορατότητας 100m"]
+    end
+
+    Atmosphere --> PV_Drop
+    Atmosphere --> Heat_Rise
+    Atmosphere --> Rover_Risk
+    PV_Drop --> Load_Crisis
+    Heat_Rise --> Load_Crisis
+
+    subgraph Απόφαση["3. Λήψη Απόφασης Συντονιστή (Mitigation)"]
+        Preview["POST /api/v1/senaria/kataigida-skonis/proepiskopisi"]
+        DecisionModal["Επιλογές Συντονιστή:<br/>1. Αναστολή αναβλητών φορτίων (θερμοκήπιο)<br/>2. Εντολή Safe Stop στο Rover"]
+        Execute["Εκτέλεση Πακέτου Ασφαλείας"]
+    end
+
+    Load_Crisis --> Preview
+    Rover_Risk --> Preview
+    Preview --> DecisionModal
+    DecisionModal --> Execute
+
+    subgraph Αποτέλεσμα["4. Σταθεροποίηση Αποικίας"]
+        Stabilized["Νέα Κατάσταση:<br/>Φορτία: 12.0 kW, Έλλειμμα: 11.2 kW<br/>ΝΕΑ ΑΥΤΟΝΟΜΙΑ: 2.68 ώρες (160.7 min)<br/>ΚΕΡΔΟΣ: +42.29 min (+35.7%)<br/>Rover: Ασφαλώς ακινητοποιημένο στη θέση του"]
+    end
+
+    Execute --> Stabilized
+```
+
 - **Εξέλιξη Συμβάντος:**
   - Μεγάλης κλίμακας αρειανή αμμοθύελλα.
   - Το οπτικό βάθος ($\tau$) αυξάνεται, μειώνοντας την ηλιακή ακτινοβολία στα $80 \, W/m^2$ και τον συντελεστή σκόνης στο $0.50$.

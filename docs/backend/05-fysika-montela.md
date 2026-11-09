@@ -41,6 +41,39 @@ $$P_{\text{solar}} = \eta \cdot A_{\text{pv}} \cdot G_{\text{in}} \cdot f_{\text
 ---
 
 ## 3. Ηλεκτρικό Ισοζύγιο και Αυτονομία Μπαταριών (PHY-03)
+
+### Διάγραμμα Ροής Ενεργειακού Ισοζυγίου
+
+```mermaid
+flowchart TD
+    subgraph Παραγωγή["Ηλιακή Παραγωγή (PHY-02)"]
+        G["Ακτινοβολία G (W/m²)"] --> PV["P_solar = η * A * G * f_dust"]
+        f["Συντελεστής Σκόνης f_dust"] --> PV
+    end
+
+    subgraph Κατανάλωση["Φορτία Αποικίας"]
+        T["Εξωτερική T_out"] --> Heat["Θερμικές Απώλειες (PHY-01)<br/>P_loss = U * A * ΔT"]
+        Heat --> BaseLoad["Βασικά Φορτία: 8-10 kW (Θέρμανση) + 2 kW (Κρίσιμα)"]
+        DeferLoad["Αναβλητά Φορτία: 4 kW (Θερμοκήπιο)"]
+        BaseLoad --> TotalLoad["Συνολικό Φορτίο P_load"]
+        DeferLoad --> TotalLoad
+    end
+
+    PV --> Net["Καθαρή Ισχύς: P_net = P_solar - P_load"]
+    TotalLoad --> Net
+
+    Net --> Deficit{"P_net < 0 ? (Έλλειμμα)"}
+    Deficit -->|Ναι| DefPower["P_deficit = |P_net|"]
+    Deficit -->|Όχι| Charge["Φόρτιση Μπαταρίας"]
+
+    DefPower --> Battery["Μπαταρία Αποικίας: E_stored = 30 kWh"]
+    Battery --> Autonomy["Αυτονομία: t = E_stored / P_deficit"]
+    
+    Autonomy --> Decision{"Αναστολή Αναβλητών (Mitigation);"}
+    Decision -->|Χωρίς Παύση (16 kW)| Auto1["Αυτονομία: ~1.97 ώρες (118.4 min)"]
+    Decision -->|Με Παύση (12 kW)| Auto2["Αυτονομία: ~2.68 ώρες (160.7 min)<br/>ΚΕΡΔΟΣ: +42.29 min!"]
+```
+
 $$P_{\text{net}} = P_{\text{solar}} - P_{\text{load}}$$
 
 Όταν $P_{\text{net}} < 0$, υφίσταται έλλειμμα ισχύος:

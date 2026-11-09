@@ -28,7 +28,7 @@ class DedomenaXristi(BaseModel):
     id_xristi: str
     onoma: str
     vasikos_rolos: RolosXristi
-    energpoiimenos: bool = True
+    energopoiimenos: bool = True
     energoi_roloi: List[RolosXristi] = Field(default_factory=list)
 
 

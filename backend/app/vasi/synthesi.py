@@ -24,10 +24,15 @@ mixani_vasis = create_engine(
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    """Επιβολή ξένων κλειδιών (foreign keys) στη SQLite."""
+    """Επιβολή ξένων κλειδιών και βελτιστοποίηση ταυτοχρονισμού στη SQLite."""
     # Εφαρμόζεται μόνο σε συνδέσεις SQLite
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    try:
+        cursor.execute("PRAGMA journal_mode=WAL")
+    except Exception:
+        pass
     cursor.close()
 
 
@@ -39,5 +44,8 @@ def pare_synedria_vasis() -> Generator[Session, None, None]:
     synedria = SynedriaVasis()
     try:
         yield synedria
+    except Exception:
+        synedria.rollback()
+        raise
     finally:
         synedria.close()

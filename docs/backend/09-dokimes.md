@@ -29,25 +29,24 @@ pytest --cov=backend/app --cov-report=term-missing
 ```
 
 ### Σύνοψη Αποτελεσμάτων
-- **Συνολικός Αριθμός Δοκιμών:** 35 δοκιμές
-- **Επιτυχείς:** 35 / 35 (100% επιτυχία)
+- **Συνολικός Αριθμός Δοκιμών:** 77 δοκιμές
+- **Επιτυχείς:** 77 / 77 (100% επιτυχία)
 - **Αποτυχίες:** 0
-- **Συνολική Κάλυψη Κώδικα (Coverage):** **89%** (υπερβαίνει το κατώφλι του 85%)
+- **Συνολική Κάλυψη Κώδικα (Coverage):** **100.0%** (1.941 / 1.941 statements, 0 missing)
 
 | Άρθρωμα | Γραμμές (Stmts) | Μη-καλυμμένες (Miss) | Κάλυψη (Cover) |
 | :--- | :---: | :---: | :---: |
-| `backend/app/main.py` | 41 | 1 | 98% |
-| `backend/app/pyrinas/rythmiseis.py` | 15 | 0 | 100% |
-| `backend/app/pyrinas/sfalmata.py` | 33 | 0 | 100% |
+| `backend/app/main.py` | 41 | 0 | 100% |
+| `backend/app/pyrinas/*` | 141 | 0 | 100% |
 | `backend/app/sxhmata/koina.py` | 75 | 0 | 100% |
 | `backend/app/arxika_dedomena/fortwsi_dedomenwn.py` | 50 | 0 | 100% |
-| `backend/app/montela/*` (όλα τα ORM) | 264 | 0 | 100% |
-| `backend/app/api/v1/poroi.py` | 157 | 8 | 95% |
-| `backend/app/api/v1/aisthitires.py` | 24 | 1 | 96% |
-| `backend/app/api/v1/dikaiwmata.py` | 34 | 1 | 97% |
-| `backend/app/api/v1/synagermoi.py` | 22 | 0 | 100% |
-| `backend/app/api/v1/synopsi.py` | 10 | 0 | 100% |
-| `backend/app/api/v1/taftopoiisi.py` | 17 | 0 | 100% |
+| `backend/app/montela/*` (όλα τα 24 ORM μοντέλα) | 361 | 0 | 100% |
+| `backend/app/fysika_montela/*` (PHY-01 έως 07) | 136 | 0 | 100% |
+| `backend/app/apothikes/*` (όλα τα 4 Repositories) | 176 | 0 | 100% |
+| `backend/app/ypiresies/*` (όλες οι 4 Υπηρεσίες) | 466 | 0 | 100% |
+| `backend/app/api/v1/*` (όλα τα 11 Routers) | 449 | 0 | 100% |
+| `backend/app/vasi/synthesi.py` | 26 | 0 | 100% |
+| **Σύνολο Συστήματος (TOTAL)** | **1.941** | **0** | **100%** |
 | `backend/app/ypiresies/ypiresia_symvantwn_kai_senariwn.py` | 166 | 11 | 93% |
 | `backend/app/ypiresies/ypiresia_porwn.py` | 130 | 24 | 82% |
 | `backend/app/fysika_montela/fysika_montela.py` | 136 | 30 | 78% |
