@@ -25,42 +25,51 @@ curl -s http://localhost:8000/health
 
 ## 2. Υποστήριξη Ζωής (ECLSS - Υποσύστημα Α)
 
-### POST `/api/v1/ypostiriksi-zwis/thermokrasia/proepiskopisi`
+### POST `/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/proepiskopisi`
 Υπολογίζει τις επιπτώσεις αλλαγής επιθυμητής θερμοκρασίας θαλάμου (απαιτούμενη θερμική ισχύς, διαφορικό, νέες απώλειες).
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/ypostiriksi-zwis/thermokrasia/proepiskopisi \
+curl -s -X POST http://localhost:8000/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/proepiskopisi \
   -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_01" \
   -H "X-Rolos: ypefthynos_ypostiriksis_zwis" \
   -d '{
-    "id_thalamou": "thalamos_diamonis_01",
-    "epithymiti_thermokrasia_k": 294.15
+    "epithymiti_thermokrasia_k": 294.15,
+    "anamenomeni_ekdosi_katastasis": 1
   }'
 ```
 **Απόκριση (200 OK):**
 ```json
 {
-  "id_proepiskopisis": "proep_temp_...",
-  "id_thalamou": "thalamos_diamonis_01",
-  "trexousa_thermokrasia_k": 293.15,
-  "epithymiti_thermokrasia_k": 294.15,
-  "apaitoumeni_isxys_kw": 8.1,
-  "diafora_isxyos_kw": 0.1,
-  "oristiki_katastasi": "egkyro",
-  "minyma": "Η προεπισκόπηση ρύθμισης θερμοκρασίας ολοκληρώθηκε επιτυχώς."
+  "id_proepiskopisis": "proep_therm_...",
+  "id_xwrou": "xwros_01",
+  "ekdosi_senariou": 1,
+  "trexousa": {
+    "thermokrasia_k": 293.0,
+    "epithymiti_thermokrasia_k": 293.0
+  },
+  "zitoumeni": {
+    "epithymiti_thermokrasia_k": 294.15
+  },
+  "epiptwsi": {
+    "thermansi_prin_w": 8000.0,
+    "thermansi_meta_w": 8115.0,
+    "metavoli_w": 115.0
+  },
+  "apaiteitai_epivevaiwsi": true
 }
 ```
 
-### POST `/api/v1/ypostiriksi-zwis/thermokrasia/epivevaiwsi`
+### POST `/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles`
 Επιβεβαιώνει και εφαρμόζει την αλλαγή στόχου θερμοκρασίας με υποστήριξη Idempotency Key.
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/ypostiriksi-zwis/thermokrasia/epivevaiwsi \
+curl -s -X POST http://localhost:8000/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles \
   -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_01" \
   -H "X-Rolos: ypefthynos_ypostiriksis_zwis" \
   -H "Idempotency-Key: idem-temp-1001" \
   -d '{
-    "id_proepiskopisis": "proep_temp_..."
+    "id_proepiskopisis": "proep_therm_...",
+    "anamenomeni_ekdosi_katastasis": 1
   }'
 ```
 
@@ -68,15 +77,15 @@ curl -s -X POST http://localhost:8000/api/v1/ypostiriksi-zwis/thermokrasia/epive
 
 ## 3. Πόροι & Ενέργεια (Υποσύστημα Β)
 
-### POST `/api/v1/poroi/ardefsi/proepiskopisi`
+### POST `/api/v1/thermokipia/thermokipio_01/ardefsi/proepiskopisi`
 Ελέγχει τη διαθεσιμότητα νερού και υπολογίζει τις επιπτώσεις προγράμματος άρδευσης.
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/poroi/ardefsi/proepiskopisi \
+curl -s -X POST http://localhost:8000/api/v1/thermokipia/thermokipio_01/ardefsi/proepiskopisi \
   -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_02" \
   -H "X-Rolos: ypefthynos_porwn" \
   -d '{
-    "id_zwnis": "zwni_thermokipiou_a",
+    "id_zwnis": "zwni_01",
     "posotita_nerou_l": 50.0,
     "diarkeia_lepta": 30
   }'
@@ -84,26 +93,29 @@ curl -s -X POST http://localhost:8000/api/v1/poroi/ardefsi/proepiskopisi \
 **Απόκριση (200 OK):**
 ```json
 {
-  "id_proepiskopisis": "proep_ard_...",
-  "id_zwnis": "zwni_thermokipiou_a",
+  "id_proepiskopisis": "proep_ardefsi_...",
+  "id_thermokipiou": "thermokipio_01",
+  "id_zwnis": "zwni_01",
+  "id_dexamenis": "dexameni_01",
   "posotita_nerou_l": 50.0,
-  "diathesimo_apothema_l": 5000.0,
-  "ypoloipo_meta_ardefsi_l": 4950.0,
-  "eparkeia": true,
-  "minyma": "Επαρκές απόθεμα νερού για την εκτέλεση της άρδευσης."
+  "stathmi_prin_l": 7500.0,
+  "stathmi_meta_l": 7450.0,
+  "ygrasia_prin": 0.55,
+  "ygrasia_meta_ektimwmeni": 0.60,
+  "eparkis_stathmi": true
 }
 ```
 
-### POST `/api/v1/poroi/ardefsi/epivevaiwsi`
-Οριστικοποιεί το πότισμα, αφαιρεί το νερό από τη δεξαμενή και καταγράφει την εντολή.
+### POST `/api/v1/thermokipia/thermokipio_01/ardefsi/programmata`
+Οριστικοποιεί το πότισμα, δεσμεύει το νερό από τη δεξαμενή και καταγράφει το πρόγραμμα άρδευσης.
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/poroi/ardefsi/epivevaiwsi \
+curl -s -X POST http://localhost:8000/api/v1/thermokipia/thermokipio_01/ardefsi/programmata \
   -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_02" \
   -H "X-Rolos: ypefthynos_porwn" \
   -H "Idempotency-Key: idem-ard-2002" \
   -d '{
-    "id_proepiskopisis": "proep_ard_..."
+    "id_proepiskopisis": "proep_ardefsi_..."
   }'
 ```
 
