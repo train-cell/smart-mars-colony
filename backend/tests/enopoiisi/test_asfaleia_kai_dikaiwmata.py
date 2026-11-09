@@ -98,3 +98,13 @@ def test_delegation_grant_and_revoke(pelatis_dokimwn: TestClient):
     # 4. Επαλήθευση ότι δεν είναι πλέον ενεργή
     apantisi_listas_meta = pelatis_dokimwn.get("/api/v1/dikaiwmata/metavivaseis?mono_energes=true")
     assert not any(m["id_metavivasis"] == id_metavivasis for m in apantisi_listas_meta.json())
+
+
+def test_xeiristis_oximatos_alias_support(pelatis_dokimwn: TestClient):
+    """Έλεγχος υποστήριξης των headers alias 'xeiristis_oximatos'."""
+    apantisi = pelatis_dokimwn.get(
+        "/api/v1/taftopoiisi/trexwn-xristis",
+        headers={"X-Id-Xristi": "xeiristis_oximatos", "X-Rolos": "xeiristis_oximatos"},
+    )
+    assert apantisi.status_code == 200
+    assert apantisi.json()["vasikos_rolos"] == "ypefthynos_apostolwn"

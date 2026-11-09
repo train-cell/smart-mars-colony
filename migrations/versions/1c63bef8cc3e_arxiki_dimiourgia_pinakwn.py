@@ -114,7 +114,7 @@ def upgrade() -> None:
         sa.Column("id_katastasis", sa.Integer(), nullable=False),
         sa.Column("simerino_vima", sa.Integer(), nullable=False),
         sa.Column("xronos_prosomoiwsis", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("active_scenario", sa.String(length=50), nullable=True),
+        sa.Column("energo_senario", sa.String(length=50), nullable=True),
         sa.Column("seed", sa.Integer(), nullable=False),
         sa.Column("einai_se_pausi", sa.Boolean(), nullable=False),
         sa.Column("xronos_dimiourgias", sa.DateTime(timezone=True), nullable=False),

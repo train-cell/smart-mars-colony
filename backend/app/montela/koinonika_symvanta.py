@@ -174,6 +174,6 @@ class KatastasiProsomoiwsis(VasiMontelwn, XronosStigmaMixin):
     id_katastasis: Mapped[int] = mapped_column(Integer, primary_key=True)
     simerino_vima: Mapped[int] = mapped_column(Integer, default=0)
     xronos_prosomoiwsis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    active_scenario: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    energo_senario: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     seed: Mapped[int] = mapped_column(Integer, default=42)
     einai_se_pausi: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -74,6 +74,12 @@ def pare_trexonta_xristi(
 
     Αν δεν δοθεί header, προεπιλέγεται ο λογαριασμός συντονιστή για ευκολία τοπικού ελέγχου.
     """
+    # Υποστήριξη συνωνύμου xeiristis_oximatos / xristis_apostolwn για απόλυτη ευχρηστία frontend
+    if x_id_xristi == "xeiristis_oximatos":
+        x_id_xristi = "xristis_apostolwn"
+    if x_rolos == "xeiristis_oximatos":
+        x_rolos = RolosXristi.YPEFTHYNOS_APOSTOLWN.value
+
     if x_id_xristi and x_id_xristi in XRHSTES_DEMO:
         xristis = XRHSTES_DEMO[x_id_xristi]
         # Εάν οριστεί ρητά πρόσθετος ρόλος μέσω header, ελέγχεται αν είναι έγκυρος

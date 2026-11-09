@@ -407,7 +407,7 @@ def arxikopoiisi_dedomenwn_epideiksis(synedria: Session, epanarxikopoiisi: bool 
             id_katastasis=1,
             simerino_vima=0,
             xronos_prosomoiwsis=twrinos_xronos,
-            active_scenario=None,
+            energo_senario=None,
             seed=42,
             einai_se_pausi=False,
         )

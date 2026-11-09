@@ -364,24 +364,45 @@ class YpiresiaSymvantwnKaiSenariwn:
         - Rover επιστροφή: 0.5 h, 0.3 kWh, ενεργειακά εφικτό αλλά ορατότητα 100 m < 300 m (κίνδυνος!)
         """
         # Υπολογισμοί baseline
-        pv_base = ypologise_isxy_fwtovoltaikou(0.20, 100.0, 300.0, 0.8) / 1000.0
-        heat_base = ypologise_apaitisi_thermansis(0.2, 500.0, 293.0, 213.0) / 1000.0
-        _, def_base, _, auto_base, _ = ypologise_ilektriko_isozygio_kai_autonomia(
-            pv_base, heat_base + 2.0, 4.0, 0.0, 30.0, efedreia_idi_afairemeni=True
+        isxys_pv_vasis_kw = ypologise_isxy_fwtovoltaikou(0.20, 100.0, 300.0, 0.8) / 1000.0
+        isxys_thermansis_vasis_kw = ypologise_apaitisi_thermansis(0.2, 500.0, 293.0, 213.0) / 1000.0
+        _, elleimma_vasis_kw, _, autonomia_vasis_wres, _ = (
+            ypologise_ilektriko_isozygio_kai_autonomia(
+                isxys_pv_vasis_kw,
+                isxys_thermansis_vasis_kw + 2.0,
+                4.0,
+                0.0,
+                30.0,
+                efedreia_idi_afairemeni=True,
+            )
         )
 
         # Υπολογισμοί καταιγίδας (πριν την απόφαση, με αναβλητά)
-        pv_storm = ypologise_isxy_fwtovoltaikou(0.20, 100.0, 80.0, 0.5) / 1000.0
-        heat_storm = ypologise_apaitisi_thermansis(0.2, 500.0, 293.0, 193.0) / 1000.0
-        _, def_storm_anavlita, _, auto_storm_anavlita, _ = (
+        isxys_pv_kataigidas_kw = ypologise_isxy_fwtovoltaikou(0.20, 100.0, 80.0, 0.5) / 1000.0
+        isxys_thermansis_kataigidas_kw = (
+            ypologise_apaitisi_thermansis(0.2, 500.0, 293.0, 193.0) / 1000.0
+        )
+        _, elleimma_kataigidas_me_anavlita_kw, _, autonomia_kataigidas_me_anavlita_wres, _ = (
             ypologise_ilektriko_isozygio_kai_autonomia(
-                pv_storm, heat_storm + 2.0, 4.0, 0.0, 30.0, efedreia_idi_afairemeni=True
+                isxys_pv_kataigidas_kw,
+                isxys_thermansis_kataigidas_kw + 2.0,
+                4.0,
+                0.0,
+                30.0,
+                efedreia_idi_afairemeni=True,
             )
         )
 
         # Υπολογισμοί καταιγίδας (με παύση αναβλητών φορτίων)
-        _, def_storm_shed, _, auto_storm_shed, _ = ypologise_ilektriko_isozygio_kai_autonomia(
-            pv_storm, heat_storm + 2.0, 0.0, 0.0, 30.0, efedreia_idi_afairemeni=True
+        _, elleimma_kataigidas_shed_kw, _, autonomia_kataigidas_shed_wres, _ = (
+            ypologise_ilektriko_isozygio_kai_autonomia(
+                isxys_pv_kataigidas_kw,
+                isxys_thermansis_kataigidas_kw + 2.0,
+                0.0,
+                0.0,
+                30.0,
+                efedreia_idi_afairemeni=True,
+            )
         )
 
         # Υπολογισμός rover
@@ -396,36 +417,38 @@ class YpiresiaSymvantwnKaiSenariwn:
             katwfli_asfalous_oratotitas_m=300.0,
         )
 
-        kerdos_wres = auto_storm_shed - auto_storm_anavlita
+        kerdos_wres = autonomia_kataigidas_shed_wres - autonomia_kataigidas_me_anavlita_wres
 
         return {
             "senario": "kataigida_skonis_2026",
             "statistika_golden_fixture": {
                 "fwtovoltaika": {
-                    "baseline_kw": round(pv_base, 2),
-                    "kataigida_kw": round(pv_storm, 2),
-                    "ptwsi_kw": round(pv_base - pv_storm, 2),
+                    "baseline_kw": round(isxys_pv_vasis_kw, 2),
+                    "kataigida_kw": round(isxys_pv_kataigidas_kw, 2),
+                    "ptwsi_kw": round(isxys_pv_vasis_kw - isxys_pv_kataigidas_kw, 2),
                 },
                 "thermansi": {
-                    "baseline_kw": round(heat_base, 2),
-                    "kataigida_kw": round(heat_storm, 2),
-                    "afksisi_kw": round(heat_storm - heat_base, 2),
+                    "baseline_kw": round(isxys_thermansis_vasis_kw, 2),
+                    "kataigida_kw": round(isxys_thermansis_kataigidas_kw, 2),
+                    "afksisi_kw": round(
+                        isxys_thermansis_kataigidas_kw - isxys_thermansis_vasis_kw, 2
+                    ),
                 },
                 "fortia_kai_autonomia": {
                     "baseline": {
-                        "fortia_kw": round(heat_base + 2.0 + 4.0, 2),
-                        "elleimma_kw": round(def_base, 2),
-                        "autonomia_wres": round(auto_base, 5),
+                        "fortia_kw": round(isxys_thermansis_vasis_kw + 2.0 + 4.0, 2),
+                        "elleimma_kw": round(elleimma_vasis_kw, 2),
+                        "autonomia_wres": round(autonomia_vasis_wres, 5),
                     },
                     "kataigida_me_anavlita": {
-                        "fortia_kw": round(heat_storm + 2.0 + 4.0, 2),
-                        "elleimma_kw": round(def_storm_anavlita, 2),
-                        "autonomia_wres": round(auto_storm_anavlita, 5),
+                        "fortia_kw": round(isxys_thermansis_kataigidas_kw + 2.0 + 4.0, 2),
+                        "elleimma_kw": round(elleimma_kataigidas_me_anavlita_kw, 2),
+                        "autonomia_wres": round(autonomia_kataigidas_me_anavlita_wres, 5),
                     },
                     "kataigida_me_pausi_anavlhtwn": {
-                        "fortia_kw": round(heat_storm + 2.0, 2),
-                        "elleimma_kw": round(def_storm_shed, 2),
-                        "autonomia_wres": round(auto_storm_shed, 5),
+                        "fortia_kw": round(isxys_thermansis_kataigidas_kw + 2.0, 2),
+                        "elleimma_kw": round(elleimma_kataigidas_shed_kw, 2),
+                        "autonomia_wres": round(autonomia_kataigidas_shed_wres, 5),
                         "kerdos_wres": round(kerdos_wres, 5),
                         "kerdos_lepta": round(kerdos_wres * 60.0, 2),
                     },

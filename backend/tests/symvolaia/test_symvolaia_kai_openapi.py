@@ -108,3 +108,26 @@ def test_greeklish_naming_standards(pelatis_dokimwn: TestClient):
                 assert f"/{leksh}" not in path_lower, (
                     f"Βρέθηκε αγγλική λέξη domain στο path: {path}"
                 )
+
+    # Έλεγχος ότι και όλοι οι πίνακες και οι στήλες της βάσης είναι Greeklish
+    from backend.app.montela import VasiMontelwn
+
+    for onoma_pinaka, pinakas in VasiMontelwn.metadata.tables.items():
+        pinakas_lower = onoma_pinaka.lower()
+        for leksh in apagorevmena_agglika:
+            assert leksh not in pinakas_lower, (
+                f"Βρέθηκε αγγλική λέξη domain στον πίνακα: {onoma_pinaka}"
+            )
+        for stili in pinakas.columns:
+            stili_lower = stili.name.lower()
+            for leksh in [
+                "temperature",
+                "battery",
+                "sensor",
+                "habitats",
+                "missions",
+                "active_scenario",
+            ]:
+                assert leksh != stili_lower, (
+                    f"Βρέθηκε αγγλική λέξη domain στη στήλη {stili.name} του πίνακα {onoma_pinaka}"
+                )
