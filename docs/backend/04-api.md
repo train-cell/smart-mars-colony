@@ -119,17 +119,52 @@ curl -s -X POST http://localhost:8000/api/v1/thermokipia/thermokipio_01/ardefsi/
   }'
 ```
 
-### POST `/api/v1/poroi/fortia/periorismos`
-Περιορίζει αναβλητά φορτία (π.χ. θέρμανση θερμοκηπίου) για εξοικονόμηση ισχύος.
+### POST `/api/v1/energeia/periorismos-fortiwn/proepiskopisi`
+Υπολογίζει τις επιπτώσεις παύσης αναβλητών φορτίων (θέρμανση θερμοκηπίου) για εξοικονόμηση ισχύος κατά τη διάρκεια καταιγίδας.
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/poroi/fortia/periorismos \
+curl -s -X POST http://localhost:8000/api/v1/energeia/periorismos-fortiwn/proepiskopisi \
   -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_02" \
   -H "X-Rolos: ypefthynos_porwn" \
   -d '{
-    "id_fortiou": "fortio_thermansis_thermokipiou",
-    "katastasi_leitourgias": "anastoli",
-    "pososto_isxyos": 0.0
+    "pausi_anavlhtwn": true,
+    "aitiologia": "Εξοικονόμηση ισχύος λόγω επικείμενης καταιγίδας"
+  }'
+```
+**Απόκριση (200 OK):**
+```json
+{
+  "pausi_anavlhtwn": true,
+  "katastasi_prin": {
+    "fortia_kw": 14.0,
+    "elleimma_kw": 9.2,
+    "autonomia_wres": 3.261
+  },
+  "katastasi_meta": {
+    "fortia_kw": 10.0,
+    "elleimma_kw": 5.2,
+    "autonomia_wres": 5.769
+  },
+  "ofelos": {
+    "meiwsi_isxyos_kw": 4.0,
+    "kerdos_autonomias_wres": 2.508,
+    "kerdos_autonomias_lepta": 150.5
+  },
+  "apaiteitai_egkrisi_syntonisti": true
+}
+```
+
+### POST `/api/v1/energeia/periorismos-fortiwn/entoles`
+Εκτελεί τον περιορισμό/αναστολή φορτίων με έγκριση συντονιστή και καταγραφή στο audit log.
+```bash
+curl -s -X POST http://localhost:8000/api/v1/energeia/periorismos-fortiwn/entoles \
+  -H "Content-Type: application/json" \
+  -H "X-ID-Xristi: syntonistis" \
+  -H "X-Rolos: syntonistis_apoikias" \
+  -H "Idempotency-Key: idem-per-01" \
+  -d '{
+    "pausi_anavlhtwn": true,
+    "aitiologia": "Εξοικονόμηση ισχύος λόγω επικείμενης καταιγίδας"
   }'
 ```
 
@@ -137,51 +172,119 @@ curl -s -X POST http://localhost:8000/api/v1/poroi/fortia/periorismos \
 
 ## 4. Αποστολές & Rover (Υποσύστημα Γ)
 
-### POST `/api/v1/apostoles/rover/epistrofi/proepiskopisi`
-Αξιολογεί την εφικτότητα και ασφάλεια επιστροφής του rover στη βάση.
+### POST `/api/v1/oximata/rover_01/anaklisi/proepiskopisi`
+Αξιολογεί την πολυδιάστατη εφικτότητα και ασφάλεια επιστροφής του rover στη βάση (ενέργεια, ορατότητα, επικοινωνία).
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/apostoles/rover/epistrofi/proepiskopisi \
-  -H "Content-Type: application/json" \
+curl -s -X POST http://localhost:8000/api/v1/oximata/rover_01/anaklisi/proepiskopisi \
   -H "X-ID-Xristi: xristis_03" \
-  -H "X-Rolos: xeiristis_oximatos" \
+  -H "X-Rolos: xeiristis_oximatos"
+```
+**Απόκριση σε κανονικές συνθήκες (200 OK):**
+```json
+{
+  "apostasi_km": 2.0,
+  "taxytita_kmh": 4.0,
+  "xronos_epistrofis_wres": 0.5,
+  "xronos_epistrofis_lepta": 30.0,
+  "apaitoumeni_energeia_kwh": 0.3,
+  "energeia_meta_epistrofi_kwh": 0.5,
+  "energeiaka_efikto": true,
+  "oratotita_asfalis": true,
+  "epikoinwnia_asfalis": true,
+  "synolika_asfalis_epistrofi": true,
+  "proeidopoiiseis": [],
+  "id_oximatos": "rover_01",
+  "onoma_oximatos": "Εξερευνητικό Όχημα Αίολος (Rover-1)",
+  "ekdosi_katastasis": 1
+}
+```
+*Σημείωση:* Σε συνθήκες καταιγίδας σκόνης, η ορατότητα πέφτει στα 100 m (< 300 m όριο ασφαλείας) και το `synolika_asfalis_epistrofi` γίνεται `false`.
+
+### POST `/api/v1/oximata/rover_01/asfalis-stasi/entoles`
+Εντολή άμεσης ασφαλούς στάσης (Safe Stop) σε κατάσταση υψηλού κινδύνου.
+```bash
+curl -s -X POST http://localhost:8000/api/v1/oximata/rover_01/asfalis-stasi/entoles \
+  -H "Content-Type: application/json" \
+  -H "X-ID-Xristi: syntonistis" \
+  -H "X-Rolos: syntonistis_apoikias" \
+  -H "Idempotency-Key: idem-safe-01" \
   -d '{
-    "id_oximatos": "rover_erevnas_01",
-    "taxytita_km_h": 4.0
+    "anamenomeni_ekdosi_katastasis": 1,
+    "aitiologia": "Ορατότητα κάτω των 300m λόγω αμμοθύελλας"
   }'
 ```
-**Απόκριση σε κανονικές συνθήκες:** `energeiaka_efikto: true`, `asfales: true`.
-**Απόκριση σε καταιγίδα σκόνης:** `energeiaka_efikto: true`, `asfales: false` (λόγω ορατότητας < 300 m και υποβάθμισης επικοινωνίας).
-
-### POST `/api/v1/apostoles/rover/asfalis-stathmefsi`
-Εντολή άμεσης ασφαλούς στάθμευσης (Safe Stop) σε κατάσταση υψηλού κινδύνου.
+**Απόκριση (200 OK):**
+```json
+{
+  "id_entolis": "entoli_stasis_...",
+  "id_oximatos": "rover_01",
+  "katastasi_oximatos": "asfalis_stasi",
+  "minyma": "Το όχημα τέθηκε επιτυχώς σε κατάσταση ασφαλούς στάσης."
+}
+```
 
 ---
 
 ## 5. Σενάρια & Προσομοίωση (Scenarios & Simulation)
 
 ### POST `/api/v1/senaria/kataigida-skonis/proepiskopisi`
-Υπολογίζει τις συνδυασμένες επιπτώσεις καταιγίδας σκόνης (πτώση ηλιακής ισχύος, αύξηση θερμικών απωλειών, νέα αυτονομία μπαταριών).
+Υπολογίζει συγκριτικά όλες τις επιλογές καταιγίδας βάσει των στατιστικών του Golden Fixture (§6).
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/senaria/kataigida-skonis/proepiskopisi \
-  -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_04" \
-  -H "X-Rolos: syntonistis_apoikias" \
-  -d '{
-    "optiko_vathos_tau": 2.5,
-    "diarkeia_wres": 48.0,
-    "anavoli_fortiwn": true
-  }'
+  -H "X-Rolos: syntonistis_apoikias"
+```
+**Απόκριση (200 OK):**
+```json
+{
+  "senario": "kataigida_skonis_2026",
+  "statistika_golden_fixture": {
+    "pv_kanoniko_kw": 4.8,
+    "pv_kataigida_kw": 0.8,
+    "thermansi_kanoniki_kw": 8.0,
+    "thermansi_kataigida_kw": 10.0,
+    "autonomia_kanoniki_wres": 3.261,
+    "autonomia_xwris_pausi_wres": 1.974,
+    "autonomia_me_pausi_wres": 2.679,
+    "kerdos_autonomias_lepta": 42.29
+  },
+  "epiloges_apofasis": {
+    "kamia_allagi": {
+      "autonomia_wres": 1.974,
+      "kindynos": "ypsilos"
+    },
+    "pausi_anavlhtwn": {
+      "autonomia_wres": 2.679,
+      "kerdos_lepta": 42.29,
+      "kindynos": "metrios"
+    }
+  },
+  "apaiteitai_egkrisi_syntonisti": true
+}
 ```
 
-### POST `/api/v1/senaria/tick`
-Προχωρά το εικονικό ρολόι της αποικίας κατά $N$ δευτερόλεπτα.
+### POST `/api/v1/prosomoiwsi/vima`
+Προχωρά το εικονικό ρολόι της αποικίας κατά καθορισμένο αριθμό λεπτών (CORE-13).
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/senaria/tick \
+curl -s -X POST http://localhost:8000/api/v1/prosomoiwsi/vima \
   -H "Content-Type: application/json" \
   -H "X-ID-Xristi: xristis_04" \
   -H "X-Rolos: syntonistis_apoikias" \
-  -d '{"vimata_deyterolepta": 3600}'
+  -d '{"lepta": 15}'
+```
+**Απόκριση (200 OK):**
+```json
+{
+  "simerino_vima": 1,
+  "neos_xronos": "2026-11-10T12:15:00",
+  "lepta_pou_prostethikan": 15
+}
 ```
 
-### POST `/api/v1/senaria/epanapofora`
-Επαναφέρει την αποικία στην αρχική κατάσταση βάσης δεδομένων (reset to initial state).
+### POST `/api/v1/prosomoiwsi/epanafora`
+Επαναφέρει την προσομοίωση και τις παραμέτρους στις κανονικές συνθήκες baseline.
+```bash
+curl -s -X POST http://localhost:8000/api/v1/prosomoiwsi/epanafora \
+  -H "X-ID-Xristi: syntonistis" \
+  -H "X-Rolos: syntonistis_apoikias"
+```

@@ -18,7 +18,7 @@ flowchart TD
     end
 
     subgraph Physical["Φυσικό Επίπεδο / Διεπαφή & Backend"]
-        S4["4. Εκτέλεση (Execution)<br/>POST /api/v1/poroi/fortia/periorismos"]
+        S4["4. Εκτέλεση (Execution)<br/>POST /api/v1/energeia/periorismos-fortiwn/entoles"]
         SysState["Αλλαγή Κατάστασης Συστήματος<br/>Ενημέρωση SQLite DB & Επανυπολογισμός Ισοζυγίου"]
         APIResp["Απόκριση API & Επισκόπηση<br/>GET /api/v1/poroi/ilektriki-energeia/isozigio"]
     end
