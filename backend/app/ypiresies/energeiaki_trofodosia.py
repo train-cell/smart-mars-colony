@@ -130,10 +130,9 @@ def ypologise_katanomi_fortiwn(fortia, diathesimi_isxys_kw):
                 ana_fortio[fortio["id_fortiou"]]["paradidomeni_kw"] = fortio["isxys_kw"]
                 ypoloipo = max(0, ypoloipo - fortio["isxys_kw"])
     for stoixeio in ana_fortio.values():
+        zitoumeni = stoixeio["zitoumeni_kw"]
         stoixeio["pososto"] = (
-            stoixeio["paradidomeni_kw"] / stoixeio["zitoumeni_kw"]
-            if stoixeio["zitoumeni_kw"]
-            else 0
+            min(1.0, max(0.0, stoixeio["paradidomeni_kw"] / zitoumeni)) if zitoumeni > 1e-9 else 0.0
         )
     zitisi = sum(stoixeio["zitoumeni_kw"] for stoixeio in ana_fortio.values())
     paradidomeni = sum(stoixeio["paradidomeni_kw"] for stoixeio in ana_fortio.values())

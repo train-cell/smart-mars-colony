@@ -169,9 +169,15 @@ def test_phy03_oria_kai_sfalmata():
     with pytest.raises(ValueError, match="πιέσεις"):
         ypologise_apothema_kai_autonomia_oxygonou(100.0, 293.0, -10.0, 16000.0, 6, 0.04)
 
-    # Αρνητικός αριθμός κατοίκων
+    # Αρνητικός ή μη ακέραιος αριθμός κατοίκων
     with pytest.raises(ValueError, match="αριθμός κατοίκων"):
         ypologise_apothema_kai_autonomia_oxygonou(100.0, 293.0, 21000.0, 16000.0, -2, 0.04)
+
+    with pytest.raises(ValueError, match="αριθμός κατοίκων"):
+        ypologise_apothema_kai_autonomia_oxygonou(100.0, 293.0, 21000.0, 16000.0, 0.5, 0.04)
+
+    with pytest.raises(ValueError, match="αριθμός κατοίκων"):
+        ypologise_apothema_kai_autonomia_oxygonou(100.0, 293.0, 21000.0, 16000.0, True, 0.04)
 
     # Αρνητική κατανάλωση ή παραγωγή
     with pytest.raises(ValueError, match="ρυθμοί"):

@@ -155,8 +155,12 @@ def ypologise_apothema_kai_autonomia_oxygonou(
         raise ValueError("Η θερμοκρασία σε Kelvin πρέπει να είναι αυστηρά θετική.")
     if meriki_piesi_oxygonou_pa < 0.0 or katwfli_asfaleias_piesis_pa < 0.0:
         raise ValueError("Οι πιέσεις δεν μπορούν να είναι αρνητικές.")
-    if arithmos_katoikwn < 0:
-        raise ValueError("Ο αριθμός κατοίκων δεν μπορεί να είναι αρνητικός.")
+    if (
+        not isinstance(arithmos_katoikwn, int)
+        or isinstance(arithmos_katoikwn, bool)
+        or arithmos_katoikwn < 0
+    ):
+        raise ValueError("Ο αριθμός κατοίκων πρέπει να είναι μη αρνητικός ακέραιος.")
     if katanalwsi_ana_atomo_kg_h < 0.0 or rythmos_paragwgis_kg_h < 0.0:
         raise ValueError("Οι ρυθμοί κατανάλωσης/παραγωγής δεν μπορούν να είναι αρνητικοί.")
 

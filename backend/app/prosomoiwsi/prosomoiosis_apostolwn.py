@@ -286,7 +286,8 @@ def proxorise_apostoles(synedria: Session, apo: datetime, ews: datetime) -> dict
                 koino_diastima = max(
                     0, min(telos_wres, tmima["liksi_wres"]) - max(arxi_wres, tmima["enarksi_wres"])
                 )
-                kostos += tmima["energeia_kwh"] * koino_diastima / diarkeia
+                if diarkeia > 1e-9:
+                    kostos += tmima["energeia_kwh"] * koino_diastima / diarkeia
             kostos = min(
                 kostos,
                 max(0, apostoli.apaitoumeni_energeia_kwh - apostoli.energeia_katanalwtheisa_kwh),
@@ -307,13 +308,17 @@ def proxorise_apostoles(synedria: Session, apo: datetime, ews: datetime) -> dict
             apostoli.energeia_katanalwtheisa_kwh += kostos
             for tmima in tmimata:
                 if tmima["enarksi_wres"] <= telos_wres <= tmima["liksi_wres"] + 1e-9:
-                    logos = min(
-                        1,
-                        max(
-                            0,
-                            (telos_wres - tmima["enarksi_wres"])
-                            / (tmima["liksi_wres"] - tmima["enarksi_wres"]),
-                        ),
+                    diarkeia_tmimatos = tmima["liksi_wres"] - tmima["enarksi_wres"]
+                    logos = (
+                        min(
+                            1.0,
+                            max(
+                                0.0,
+                                (telos_wres - tmima["enarksi_wres"]) / diarkeia_tmimatos,
+                            ),
+                        )
+                        if diarkeia_tmimatos > 1e-9
+                        else 1.0
                     )
                     oxima.syntetagmeni_x = tmima["x_arxi_m"] + logos * (
                         tmima["x_telos_m"] - tmima["x_arxi_m"]
@@ -325,8 +330,10 @@ def proxorise_apostoles(synedria: Session, apo: datetime, ews: datetime) -> dict
                         tmima["apostasi_arxi_m"]
                         + logos * (tmima["apostasi_telos_m"] - tmima["apostasi_arxi_m"])
                     ) / 1000
-                    oxima.mesi_isxys_kw = tmima["energeia_kwh"] / (
-                        tmima["liksi_wres"] - tmima["enarksi_wres"]
+                    oxima.mesi_isxys_kw = (
+                        tmima["energeia_kwh"] / diarkeia_tmimatos
+                        if diarkeia_tmimatos > 1e-9
+                        else 0.0
                     )
                     break
             if telos_tmimatos >= telos:
