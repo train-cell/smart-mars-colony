@@ -91,6 +91,36 @@ def pare_egkyri_metrisi(synedria, id_aisthitira):
     return metrisi
 
 
+def pare_metriseis_energeias(synedria, apaitise_egkyres=False):
+    """Προέλευση/παλαιότητα των κοινών ηλιακών εισόδων, χωρίς εγγραφή στη βάση."""
+    metriseis = {}
+    for onoma, id_aisthitira in (
+        ("aktinovolia", "aisth_aktinovolia"),
+        ("skoni", "aisth_skoni"),
+    ):
+        metrisi = (
+            pare_egkyri_metrisi(synedria, id_aisthitira)
+            if apaitise_egkyres
+            else teleftaia_metrisi(synedria, id_aisthitira)
+        )
+        aisthitiras = synedria.get(Aisthitiras, id_aisthitira)
+        provoli = provoli_metrisis(synedria, aisthitiras, metrisi) if aisthitiras else None
+        if provoli:
+            provoli["id_metrisis"] = metrisi.id_metrisis
+        metriseis[onoma] = provoli
+    poiotites = [metrisi["poiotita"] if metrisi else "apousia" for metrisi in metriseis.values()]
+    seira = {"egkyro": 0, "ypovathmismeno": 1, "palio": 2, "ektos_oriwn": 3, "apousia": 4}
+    poiotita = max(poiotites, key=lambda timi: seira.get(timi, 5))
+    xronoi = [metrisi["xronos_metrisis"] for metrisi in metriseis.values() if metrisi]
+    piges = {metrisi["pigi"] for metrisi in metriseis.values() if metrisi}
+    return {
+        "poiotita": poiotita,
+        "xronos_metrisis": min(xronoi) if len(xronoi) == 2 else None,
+        "pigi": next(iter(piges)) if len(piges) == 1 else "syndyasmos_pigwn",
+        "metriseis": metriseis,
+    }
+
+
 def ananeose_metriseis(synedria, xronos):
     """Παράγει νέες μετρήσεις μόνο από λειτουργικούς προσομοιωμένους αισθητήρες."""
     xwros = synedria.get(XwrosKatoikisis, "xwros_01")

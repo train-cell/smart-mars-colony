@@ -23,6 +23,11 @@ from backend.app.montela.poroi import (
     Syssoreftis,
     ZwniThermokipiou,
 )
+from backend.app.ypiresies.energeiaki_trofodosia import (
+    pare_fortia_trofodosias,
+    pososta_ypostiriksis_zwis,
+    ypologise_katanomi_fortiwn,
+)
 
 ENERGES_KATASTASEIS = {"programmatismeno", "se_exelixi", "anastoli"}
 
@@ -257,41 +262,61 @@ def proxorise_porous(synedria: Session, apo: datetime, ews: datetime) -> dict:
         "diarros_l": 0.0,
         "elleimma_nerou_l": 0.0,
         "katanalwsi_kwh": 0.0,
+        "zitisi_energeias_kwh": 0.0,
+        "ekfortisi_syssoreftwn_kwh": 0.0,
+        "fortisi_syssoreftwn_kwh": 0.0,
+        "trofodosia_ypostiriksis_zwis": {"thermansi": 0.0, "loipes_syskeves": 0.0},
+        "katanomes": [],
         "paragwgi_kwh": 0.0,
         "mi_kalyptomeni_energeia_kwh": 0.0,
         "tmimata": len(oria) - 1,
         "fortisi_oximatwn_kwh": 0.0,
         "perissevma_mi_apothikevmeno_kwh": 0.0,
     }
-    for arxi, telos in zip(oria, oria[1:]):
+    deiktis = 0
+    while deiktis < len(oria) - 1:
+        arxi, telos = oria[deiktis : deiktis + 2]
         enimerwse_fortia_programmatwn(synedria, arxi)
         wres = (telos - arxi).total_seconds() / 3600.0
-        fortia = list(synedria.scalars(select(EnergeiakoFortio)))
-        katanalwsi_kw = sum(
-            stoixeio_zita.isxys_kw for stoixeio_zita in fortia if stoixeio_zita.energo
-        )
+        fortia = pare_fortia_trofodosias(synedria, arxi, wres)
         paragwgi_kw = (
-            sum(
-                stoixeio_zita.isxys_paragwgis_w
-                for stoixeio_zita in synedria.scalars(select(Fwtovoltaiko))
-            )
-            / 1000.0
+            sum(pv.isxys_paragwgis_w for pv in synedria.scalars(select(Fwtovoltaiko))) / 1000
         )
-        kathari_zitisi_kwh = (katanalwsi_kw - paragwgi_kw) * wres
-        syssoreftes = list(synedria.scalars(select(Syssoreftis)))
-        diathesimi_kwh = sum(stoixeio_sigma.energeia_kwh for stoixeio_sigma in syssoreftes)
-        pliris_trofodosia = kathari_zitisi_kwh <= diathesimi_kwh + 1e-9
-        apotelesma["katanalwsi_kwh"] += katanalwsi_kw * wres
+        syssoreftes = list(
+            synedria.scalars(select(Syssoreftis).order_by(Syssoreftis.id_syssorefti))
+        )
+        diathesimi_kwh = sum(syssoreftis.energeia_kwh for syssoreftis in syssoreftes)
+        elleimma_kw = sum(fortio["isxys_kw"] for fortio in fortia if fortio["energo"]) - paragwgi_kw
+        if elleimma_kw > 0 and 1e-9 < diathesimi_kwh < elleimma_kw * wres - 1e-9:
+            # Πλήρης τροφοδοσία μέχρι εξάντληση, έπειτα μόνο PV με τις ίδιες προτεραιότητες.
+            xronos_eksantlisis = max(
+                arxi + timedelta(microseconds=1),
+                arxi + timedelta(hours=diathesimi_kwh / elleimma_kw),
+            )
+            if xronos_eksantlisis < telos:
+                telos = xronos_eksantlisis
+                oria.insert(deiktis + 1, telos)
+                wres = (telos - arxi).total_seconds() / 3600
+                fortia = pare_fortia_trofodosias(synedria, arxi, wres)
+        deiktis += 1
+        katanomi = ypologise_katanomi_fortiwn(fortia, paragwgi_kw + diathesimi_kwh / wres)
+        zitisi_kwh = katanomi["zitoumeni_kw"] * wres
+        paradidomeni_kwh = katanomi["paradidomeni_kw"] * wres
+        kathari_zitisi_kwh = paradidomeni_kwh - paragwgi_kw * wres
+        apotelesma["katanalwsi_kwh"] += paradidomeni_kwh
+        apotelesma["zitisi_energeias_kwh"] += zitisi_kwh
         apotelesma["paragwgi_kwh"] += paragwgi_kw * wres
+        apotelesma["mi_kalyptomeni_energeia_kwh"] += max(0, zitisi_kwh - paradidomeni_kwh)
         ypoloipo_kwh = abs(kathari_zitisi_kwh)
         for syssoreftis in syssoreftes:
             if kathari_zitisi_kwh >= 0:
                 poso = min(syssoreftis.energeia_kwh, ypoloipo_kwh)
                 syssoreftis.energeia_kwh -= poso
+                apotelesma["ekfortisi_syssoreftwn_kwh"] += poso
             else:
                 poso = min(
                     max(
-                        0.0,
+                        0,
                         syssoreftis.xwritikotita_kwh
                         - syssoreftis.efedreia_kwh
                         - syssoreftis.energeia_kwh,
@@ -299,6 +324,7 @@ def proxorise_porous(synedria: Session, apo: datetime, ews: datetime) -> dict:
                     ypoloipo_kwh,
                 )
                 syssoreftis.energeia_kwh += poso
+                apotelesma["fortisi_syssoreftwn_kwh"] += poso
             ypoloipo_kwh -= poso
             syssoreftis.katastasi = (
                 "ekkenwsi_efedreias"
@@ -307,20 +333,32 @@ def proxorise_porous(synedria: Session, apo: datetime, ews: datetime) -> dict:
                 if kathari_zitisi_kwh > 0
                 else "fortisi"
             )
-        if kathari_zitisi_kwh > 0:
-            apotelesma["mi_kalyptomeni_energeia_kwh"] += max(0.0, ypoloipo_kwh)
         if kathari_zitisi_kwh < 0:
             apotelesma["perissevma_mi_apothikevmeno_kwh"] += max(0, ypoloipo_kwh)
-        if pliris_trofodosia:
-            for oxima in synedria.scalars(select(OximaExerevnis)):
-                fortio = synedria.get(EnergeiakoFortio, "fortio_fortisis_" + oxima.id_oximatos)
-                if fortio and fortio.energo:
-                    fortisi = min(
-                        oxima.xwritikotita_energeias_kwh - oxima.energeia_kwh,
-                        oxima.isxys_fortisis_kw * wres * 0.9,
-                    )
-                    oxima.energeia_kwh += max(0, fortisi)
-                    apotelesma["fortisi_oximatwn_kwh"] += max(0, fortisi)
+        pososta = pososta_ypostiriksis_zwis(katanomi)
+        for kleidi, pososto in pososta.items():
+            apotelesma["trofodosia_ypostiriksis_zwis"][kleidi] += (
+                pososto * wres / ((ews - apo).total_seconds() / 3600)
+            )
+        apotelesma["katanomes"].append(
+            {
+                "apo": arxi.isoformat(),
+                "ews": telos.isoformat(),
+                "ana_fortio": katanomi["ana_fortio"],
+                "trofodosia_ypostiriksis_zwis": pososta,
+            }
+        )
+        for oxima in synedria.scalars(select(OximaExerevnis)):
+            isxys = (
+                katanomi["ana_fortio"]
+                .get("fortio_fortisis_" + oxima.id_oximatos, {})
+                .get("paradidomeni_kw", 0)
+            )
+            fortisi = max(
+                0, min(oxima.xwritikotita_energeias_kwh - oxima.energeia_kwh, isxys * wres * 0.9)
+            )
+            oxima.energeia_kwh += fortisi
+            apotelesma["fortisi_oximatwn_kwh"] += fortisi
         for dexameni in synedria.scalars(select(DexameniNerou)):
             eisroi = ekroi = 0.0
             for roi in synedria.scalars(
@@ -368,7 +406,12 @@ def proxorise_porous(synedria: Session, apo: datetime, ews: datetime) -> dict:
                 continue
             if programma.katastasi == "anastoli":
                 continue
-            if not pliris_trofodosia:
+            trofodosia_programmatos = (
+                katanomi["ana_fortio"]
+                .get("fortio_programmatos_" + programma.id_programmatos, {})
+                .get("pososto", 0)
+            )
+            if trofodosia_programmatos < 1 - 1e-9:
                 _allakse_entoli(
                     synedria,
                     programma,
@@ -479,6 +522,7 @@ def proxorise_porous(synedria: Session, apo: datetime, ews: datetime) -> dict:
                     telos,
                     "Ολοκλήρωση χρονικού παραθύρου και επαλήθευση πραγματικής παροχής.",
                 )
+    apotelesma["tmimata"] = len(oria) - 1
     enimerwse_fortia_programmatwn(synedria, ews)
     synedria.flush()
     return {

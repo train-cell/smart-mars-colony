@@ -20,7 +20,7 @@ class RythmiseisEfarmogis(BaseSettings):
     )
 
     ONOMA_EFARMOGIS: str = "Smart Mars Colony Backend"
-    EKDOSI: str = "1.1.0"
+    EKDOSI: str = "1.1.1"
     PERIVALLON: str = "anaptyxi"
     DIADROMI_VASIS: str = "sqlite:///./smart_mars_colony.db"
     EPIPEDO_KATAGRAFIS: str = "INFO"

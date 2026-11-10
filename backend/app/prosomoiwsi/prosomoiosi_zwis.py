@@ -13,6 +13,11 @@ from backend.app.montela import ApothemaOxygonou, SyskeviYpostiriksisZwis, Xwros
 
 def proxorise_zwi(synedria, apo, ews, pososto_trofodosias=1.0):
     """Λύνει αναλυτικά C*dT/dt=P-UA(T-Te), με σταθερές συνθήκες ανά βήμα."""
+    if isinstance(pososto_trofodosias, dict):
+        thermansi = pososto_trofodosias["thermansi"]
+        loipes_syskeves = pososto_trofodosias["loipes_syskeves"]
+    else:
+        thermansi = loipes_syskeves = pososto_trofodosias
     diarkeia_s = (ews - apo).total_seconds()
     wres = diarkeia_s / 3600
     apotelesmata = []
@@ -28,7 +33,7 @@ def proxorise_zwi(synedria, apo, ews, pososto_trofodosias=1.0):
             (syskevi for syskevi in syskeves if syskevi.typos_syskevis == "thermantiras"), None
         )
         isxys_w = (
-            thermantiras.katanalwsi_isxyos_w * pososto_trofodosias
+            thermantiras.katanalwsi_isxyos_w * thermansi
             if thermantiras and thermantiras.katastasi_leitourgias == "energi"
             else 0
         )
@@ -50,7 +55,7 @@ def proxorise_zwi(synedria, apo, ews, pososto_trofodosias=1.0):
             syskevi.typos_syskevis == "ilektrolysi" and syskevi.katastasi_leitourgias == "energi"
             for syskevi in syskeves
         ):
-            paragwgi_kg = apothema.rythmos_paragwgis_kg_h * wres * pososto_trofodosias
+            paragwgi_kg = apothema.rythmos_paragwgis_kg_h * wres * loipes_syskeves
         zitisi_kg = xwros.plithysmos * 0.04 * wres
         elleipon_kg = zitisi_kg
         yperxeilisi_kg = 0.0
@@ -81,7 +86,7 @@ def proxorise_zwi(synedria, apo, ews, pososto_trofodosias=1.0):
             max(
                 0.0004,
                 xwros.pososto_dioxeidiou_anthraka
-                + afksisi_co2 * (1 - pososto_trofodosias if katharistis else 1),
+                + afksisi_co2 * (1 - loipes_syskeves if katharistis else 1),
             ),
         )
         xwros.ekdosi_katastasis += 1

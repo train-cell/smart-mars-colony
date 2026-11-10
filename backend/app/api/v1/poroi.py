@@ -15,6 +15,7 @@ from backend.app.pyrinas.asfaleia import (
     apaitisi_rolou,
     pare_trexonta_xristi,
 )
+from backend.app.sxhmata.apantiseis import MetrisiApantisi
 from backend.app.sxhmata.koina import ApantisiSfalmatosSxhma
 from backend.app.vasi.synthesi import pare_synedria_vasis
 from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
@@ -278,6 +279,10 @@ class FwtovoltaikoApantisi(VasiApantisis):
     syntelestis_skonis: float
     aktinovolia_w_m2: float
     isxys_w: float
+    poiotita: str = "agnwsti"
+    xronos_metrisis: datetime | None = None
+    pigi: str = "prosomoiwsi_modelou"
+    metriseis: dict[str, MetrisiApantisi | None] = Field(default_factory=dict)
 
 
 class ParagwgiApantisi(VasiApantisis):

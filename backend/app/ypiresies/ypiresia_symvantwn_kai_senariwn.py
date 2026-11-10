@@ -79,9 +79,23 @@ class YpiresiaSymvantwnKaiSenariwn:
                 403,
             )
 
-    def stigmiotypo_senariou(self):
+    def stigmiotypo_senariou(self, apaitise_egkyres=False):
         """Ενιαία έκδοση των πραγματικών πόρων, φορτίων και εξωτερικών συνθηκών."""
+        from backend.app.ypiresies.metriseis_kai_poiotita import (
+            pare_metriseis_energeias,
+            teleftaia_metrisi,
+        )
+
+        thermokrasia = (
+            pare_egkyri_metrisi(self.synedria, "aisth_thermokrasia_exw")
+            if apaitise_egkyres
+            else teleftaia_metrisi(self.synedria, "aisth_thermokrasia_exw")
+        )
         return {
+            "metriseis_energeias": pare_metriseis_energeias(
+                self.synedria, apaitise_egkyres=apaitise_egkyres
+            ),
+            "metrisi_thermokrasias_exw": thermokrasia.id_metrisis if thermokrasia else None,
             "xwroi": [
                 [
                     x.id_xwrou,
@@ -268,7 +282,7 @@ class YpiresiaSymvantwnKaiSenariwn:
                 "kataigida_skonis_2026",
                 xristis,
                 apantisi,
-                self.stigmiotypo_senariou(),
+                self.stigmiotypo_senariou(apaitise_egkyres=True),
             )
             self.synedria.commit()
         return apantisi
@@ -463,7 +477,7 @@ class YpiresiaSymvantwnKaiSenariwn:
             "syndyasmos_pliroys_asfaleias",
         }:
             raise SfalmaKanona(KodikosSfalmatos.AKYRI_TIMI, "Μη έγκυρη επιλογή.", 422)
-        prin = self.stigmiotypo_senariou()
+        prin = self.stigmiotypo_senariou(apaitise_egkyres=True)
         pare_proepiskopisi(
             self.synedria,
             id_proepiskopisis,
@@ -559,12 +573,16 @@ class YpiresiaSymvantwnKaiSenariwn:
         while apo < telos:
             ews = min(telos, apo + timedelta(minutes=5))
             poroi = proxorise_porous(self.synedria, apo, ews)
-            pososto = (
-                max(0, min(1, 1 - poroi["mi_kalyptomeni_energeia_kwh"] / poroi["katanalwsi_kwh"]))
-                if poroi["katanalwsi_kwh"] > 0
-                else 1
-            )
-            zwi = proxorise_zwi(self.synedria, apo, ews, pososto)
+            zwi = []
+            for katanomi in poroi["katanomes"]:
+                zwi.extend(
+                    proxorise_zwi(
+                        self.synedria,
+                        datetime.fromisoformat(katanomi["apo"]),
+                        datetime.fromisoformat(katanomi["ews"]),
+                        katanomi["trofodosia_ypostiriksis_zwis"],
+                    )
+                )
             apostoles = proxorise_apostoles(self.synedria, apo, ews)
             roloi.xronos_prosomoiwsis = ews
             self.synedria.flush()
@@ -593,6 +611,9 @@ class YpiresiaSymvantwnKaiSenariwn:
                 "diarros_l",
                 "elleimma_nerou_l",
                 "katanalwsi_kwh",
+                "zitisi_energeias_kwh",
+                "ekfortisi_syssoreftwn_kwh",
+                "fortisi_syssoreftwn_kwh",
                 "paragwgi_kwh",
                 "mi_kalyptomeni_energeia_kwh",
                 "fortisi_oximatwn_kwh",

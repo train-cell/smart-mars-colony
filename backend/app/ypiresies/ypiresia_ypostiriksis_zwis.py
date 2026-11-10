@@ -16,6 +16,12 @@ from backend.app.fysika_montela.fysika_montela import (
 from backend.app.montela.poroi import EnergeiakoFortio, Syssoreftis
 from backend.app.pyrinas.asfaleia import XRISTES_EPIDEIKSIS
 from backend.app.pyrinas.sfalmata import KodikosSfalmatos, SfalmaKanona
+from backend.app.ypiresies.energeiaki_trofodosia import (
+    pare_fortia_trofodosias,
+    pososta_ypostiriksis_zwis,
+    ypologise_autonomia_dyo_fasewn,
+    ypologise_katanomi_fortiwn,
+)
 from backend.app.ypiresies.entoles_kai_proepiskopiseis import (
     dimiourgise_proepiskopisi,
     katanalwse_proepiskopisi,
@@ -24,7 +30,10 @@ from backend.app.ypiresies.entoles_kai_proepiskopiseis import (
     pare_epanalipsi,
     pare_proepiskopisi,
 )
-from backend.app.ypiresies.metriseis_kai_poiotita import pare_egkyri_metrisi
+from backend.app.ypiresies.metriseis_kai_poiotita import (
+    pare_egkyri_metrisi,
+    pare_metriseis_energeias,
+)
 
 
 class YpiresiaYpostiriksisZwis:
@@ -140,8 +149,38 @@ class YpiresiaYpostiriksisZwis:
             ),
             None,
         )
-        if ilektrolysi and ilektrolysi.katastasi_leitourgias != "energi":
+        if not ilektrolysi or ilektrolysi.katastasi_leitourgias != "energi":
             paragwgi_o2_kg_h = 0.0
+
+        from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
+
+        energeia = YpiresiaPorwn(self.synedria).pare_katastasi_energeias()
+        metriseis_energeias = pare_metriseis_energeias(self.synedria)
+        egkyri_iliaki_pigi = metriseis_energeias["poiotita"] in {"egkyro", "ypovathmismeno"}
+        iliaki_kw = energeia["paragwgi"]["synoliki_isxys_kw"] if egkyri_iliaki_pigi else 0.0
+        fortia = pare_fortia_trofodosias(self.synedria)
+        zitisi_kw = sum(fortio["isxys_kw"] for fortio in fortia if fortio["energo"])
+        apothema_kwh = energeia["sysswrefsi"]["energeia_kwh"]
+        elleimma_kw = max(0, zitisi_kw - iliaki_kw)
+        diarkeia = apothema_kwh / elleimma_kw if elleimma_kw else None
+        katanomi_tora = ypologise_katanomi_fortiwn(
+            fortia, max(zitisi_kw, iliaki_kw) if apothema_kwh > 0 else iliaki_kw
+        )
+        katanomi_meta = ypologise_katanomi_fortiwn(fortia, iliaki_kw)
+        pososto_tora = pososta_ypostiriksis_zwis(katanomi_tora)["loipes_syskeves"]
+        pososto_meta = pososta_ypostiriksis_zwis(katanomi_meta)["loipes_syskeves"]
+        onomastiki_paragwgi = paragwgi_o2_kg_h
+        paragwgi_o2_kg_h *= pososto_tora
+        paragwgi_meta = onomastiki_paragwgi * pososto_meta
+        proeidopoiiseis = []
+        if not egkyri_iliaki_pigi:
+            proeidopoiiseis.append(
+                "Μη έγκυρη ηλιακή τηλεμετρία: η πρόβλεψη θεωρεί μηδενική ηλιακή παραγωγή."
+            )
+        if diarkeia is not None:
+            proeidopoiiseis.append(
+                "Μετά την εξάντληση της μπαταρίας υπολογίζεται μόνο η τρέχουσα ηλιακή τροφοδοσία."
+            )
 
         meriki_p_o2 = ypologise_meriki_piesi_oxygonou(xwros.pososto_oxygonou, xwros.piesi_pa)
         katwfli_pa = 16000.0  # 16 kPa ελάχιστη ασφαλής μερική πίεση
@@ -157,6 +196,22 @@ class YpiresiaYpostiriksisZwis:
             rythmos_paragwgis_kg_h=paragwgi_o2_kg_h,
         )
 
+        katanalwsi_kg_h = xwros.plithysmos * katanalwsi_atomo_kg_h
+        autonomia_wres = ypologise_autonomia_dyo_fasewn(
+            maza_kg, katanalwsi_kg_h, paragwgi_o2_kg_h, paragwgi_meta, diarkeia
+        )
+        synoliki_autonomia = ypologise_autonomia_dyo_fasewn(
+            maza_kg + (apothema.diathesimo_kg if apothema else 0),
+            katanalwsi_kg_h,
+            paragwgi_o2_kg_h,
+            paragwgi_meta,
+            diarkeia,
+        )
+        if katastasi == "katwfli_paraviasmeno":
+            autonomia_wres = synoliki_autonomia = 0.0
+        elif autonomia_wres is not None and paragwgi_o2_kg_h >= katanalwsi_kg_h:
+            katastasi = "peperasmeni_trofodosia"
+
         return {
             "id_xwrou": id_xwrou,
             "meriki_piesi_oxygonou_pa": round(meriki_p_o2, 2),
@@ -168,21 +223,30 @@ class YpiresiaYpostiriksisZwis:
             "autonomia_wres": round(autonomia_wres, 2) if autonomia_wres is not None else None,
             "katastasi_asfaleias": katastasi,
             "apothema_ekswterikis_dexamenis_kg": apothema.diathesimo_kg if apothema else 0.0,
-            "synoliki_autonomia_me_dexameni_wres": (
-                round(
-                    (maza_kg + (apothema.diathesimo_kg if apothema else 0.0))
-                    / (xwros.plithysmos * katanalwsi_atomo_kg_h - paragwgi_o2_kg_h),
-                    2,
-                )
-                if xwros.plithysmos * katanalwsi_atomo_kg_h > paragwgi_o2_kg_h
-                and katastasi != "katwfli_paraviasmeno"
-                else (0.0 if katastasi == "katwfli_paraviasmeno" else None)
-            ),
+            "synoliki_autonomia_me_dexameni_wres": round(synoliki_autonomia, 2)
+            if synoliki_autonomia is not None
+            else None,
+            "trofodosia": {
+                "diarkeia_plirous_trofodosias_wres": diarkeia,
+                "pososto_syskevwn_tora": pososto_tora,
+                "pososto_syskevwn_meta": pososto_meta,
+                "onomastiki_paragwgi_kg_h": onomastiki_paragwgi,
+                "paragwgi_meta_kg_h": paragwgi_meta,
+                "poiotita_iliakis_pigis": metriseis_energeias["poiotita"],
+            },
+            "proeidopoiiseis": proeidopoiiseis,
             "paradoxes": [
                 "Εκπαιδευτικό κατώφλι 16 kPa· κατανάλωση 0,04 kg ανά άτομο και ώρα.",
                 "Το χρήσιμο ατμοσφαιρικό απόθεμα και η εξωτερική δεξαμενή δηλώνονται χωριστά.",
+                "Σταθερή τρέχουσα ζήτηση/ήλιος, χωρίς μελλοντικά προγράμματα ή πίστωση περίσσειας O₂. Δεν αποτελεί πρόγνωση καιρού.",
             ],
         }
+
+    def _energeiako_stigmiotypo(self):
+        from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
+
+        pare_metriseis_energeias(self.synedria, apaitise_egkyres=True)
+        return YpiresiaPorwn(self.synedria)._stigmiotypo()
 
     def stigmiotypo_thermokrasias(self, id_xwrou):
         """Δεσμεύει τη φυσική κατάσταση, τον εξοπλισμό και τα ενεργειακά αποθέματα."""
@@ -204,6 +268,7 @@ class YpiresiaYpostiriksisZwis:
                 409,
             )
         return {
+            "energeiako_stigmiotypo": self._energeiako_stigmiotypo(),
             "ekdosi": xwros.ekdosi_katastasis,
             "epithymiti_k": xwros.epithymiti_thermokrasia_k,
             "exwteriki_k": xwros.thermokrasia_exwteriki_k,
@@ -250,15 +315,18 @@ class YpiresiaYpostiriksisZwis:
             epithymiti_thermokrasia_k,
             xwros.thermokrasia_exwteriki_k,
         )
-        if stigmiotypo["energeia_kwh"] <= 0 and isxys_meta > 0:
+        from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
+
+        energeia = YpiresiaPorwn(self.synedria).pare_katastasi_energeias()
+        if (
+            stigmiotypo["energeia_kwh"] <= 0
+            and isxys_meta / 1000 > energeia["paragwgi"]["synoliki_isxys_kw"]
+        ):
             raise SfalmaKanona(
                 KodikosSfalmatos.ANEPARKIS_ENERGEIA,
                 "Δεν υπάρχει αξιοποιήσιμη ενεργειακή εφεδρεία θέρμανσης.",
                 409,
             )
-        from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
-
-        energeia = YpiresiaPorwn(self.synedria).pare_katastasi_energeias()
         elleimma_meta = max(
             0,
             energeia["fortia"]["synolika_fortia_kw"]

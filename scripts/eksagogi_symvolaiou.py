@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from backend.app.main import efarmogi
+from backend.app.pyrinas.rythmiseis import rythmiseis
 
 
 def eksagogi_symvolaiou():
@@ -13,7 +14,7 @@ def eksagogi_symvolaiou():
         json.dumps(sxhma, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     grammes = [
-        "# Αναφορά API · έκδοση1.1.0",
+        f"# Αναφορά API · έκδοση {rythmiseis.EKDOSI}",
         "",
         "Η αναφορά εξάγεται από το πραγματικό OpenAPI. Βάση URL:`/api/v1`. Τα ακριβή σώματα, πεδία, όρια και μοντέλα απαντήσεων βρίσκονται στο [OpenAPI](../koino/openapi.json). Παραδείγματα,ρόλοι,χρόνοι και χειρισμός σφαλμάτων στη [σύμβαση διεπαφής](../koino/symvolaio-frontend-backend.md).",
         "",

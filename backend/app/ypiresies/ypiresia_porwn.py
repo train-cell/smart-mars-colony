@@ -3,6 +3,7 @@
 import math
 import uuid
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from backend.app.prosomoiwsi.prosomoiosis_porwn import (
 )
 from backend.app.pyrinas.asfaleia import RolosXristi, elegxe_dikaiwma
 from backend.app.pyrinas.sfalmata import KodikosSfalmatos, SfalmaKanona
+from backend.app.ypiresies.energeiaki_trofodosia import pare_fortia_trofodosias
 from backend.app.ypiresies.entoles_kai_proepiskopiseis import (
     dimiourgise_proepiskopisi,
     katanalwse_proepiskopisi,
@@ -36,6 +38,7 @@ from backend.app.ypiresies.entoles_kai_proepiskopiseis import (
     pare_epanalipsi,
     pare_proepiskopisi,
 )
+from backend.app.ypiresies.metriseis_kai_poiotita import pare_metriseis_energeias
 
 
 def _sphalma(minyma: str, kodikos=KodikosSfalmatos.AKYRI_TIMI, katastasi_http=400):
@@ -85,13 +88,16 @@ class YpiresiaPorwn:
     def _metriseis(self, id_zwnis=None):
         from backend.app.ypiresies.metriseis_kai_poiotita import pare_egkyri_metrisi
 
+        pare_metriseis_energeias(self.synedria, apaitise_egkyres=True)
         pare_egkyri_metrisi(self.synedria, "aisth_nero")
         if id_zwnis:
             pare_egkyri_metrisi(self.synedria, "aisth_ygrasia_" + id_zwnis)
 
     def _stigmiotypo(self):
         return {
+            "fortia_trofodosias": pare_fortia_trofodosias(self.synedria),
             "xronos": self._twra().isoformat(),
+            "metriseis_energeias": pare_metriseis_energeias(self.synedria, apaitise_egkyres=True),
             "fwtovoltaika": [
                 [
                     f.id_fwtovoltaikou,
@@ -897,7 +903,8 @@ class YpiresiaPorwn:
     def pare_katastasi_energeias(self):
         pvs = self.apothiki_porwn.pare_fwtovoltaika()
         syssoreftes = self.apothiki_porwn.pare_syssoreftes()
-        fortia = self.apothiki_porwn.pare_energeiaka_fortia()
+        fortia = [SimpleNamespace(**fortio) for fortio in pare_fortia_trofodosias(self.synedria)]
+        metriseis_energeias = pare_metriseis_energeias(self.synedria)
         paragwgi_w = sum(
             ypologise_isxy_fwtovoltaikou(
                 pv.apodosi_eta, pv.epifaneia_m2, pv.aktinovolia_w_m2, pv.syntelestis_epikathisis_f
@@ -924,6 +931,7 @@ class YpiresiaPorwn:
                 "synoliki_isxys_kw": round(paragwgi_w / 1000, 6),
                 "fwtovoltaika": [
                     {
+                        **metriseis_energeias,
                         "id_fwtovoltaikou": stoixeio_pi.id_fwtovoltaikou,
                         "onoma": stoixeio_pi.onoma,
                         "epifaneia_m2": stoixeio_pi.epifaneia_m2,
@@ -971,23 +979,12 @@ class YpiresiaPorwn:
         }
 
     def pare_analytika_fortia(self):
-        return [
-            {
-                "id_fortiou": stoixeio_zita.id_fortiou,
-                "onoma": stoixeio_zita.onoma,
-                "egkatastasi": stoixeio_zita.egkatastasi,
-                "isxys_kw": stoixeio_zita.isxys_kw,
-                "einai_krisimo": stoixeio_zita.einai_krisimo,
-                "einai_anavlito": stoixeio_zita.einai_anavlito,
-                "energo": stoixeio_zita.energo,
-                "proteraiotita": stoixeio_zita.proteraiotita,
-            }
-            for stoixeio_zita in self.apothiki_porwn.pare_energeiaka_fortia()
-        ]
+        return pare_fortia_trofodosias(self.synedria)
 
     def proepiskopisi_periorismou_fortiwn(
         self, pausi_anavlhtwn=True, xristis=None, aitiologia="Σύγκριση επιλογών"
     ):
+        pare_metriseis_energeias(self.synedria, apaitise_egkyres=True)
         katastasi = self.pare_katastasi_energeias()
         fortia = self.apothiki_porwn.pare_energeiaka_fortia()
         krisima = katastasi["fortia"]["krisima_kw"]

@@ -71,6 +71,15 @@ class KatastasiXwrouApantisi(TypedDict):
     syskeves: list[SyskeviApantisi]
 
 
+class TrofodosiaOxygonou(TypedDict):
+    diarkeia_plirous_trofodosias_wres: float | None
+    pososto_syskevwn_tora: float
+    pososto_syskevwn_meta: float
+    onomastiki_paragwgi_kg_h: float
+    paragwgi_meta_kg_h: float
+    poiotita_iliakis_pigis: str
+
+
 class OxygonoApantisi(TypedDict):
     id_xwrou: str
     meriki_piesi_oxygonou_pa: float
@@ -83,6 +92,8 @@ class OxygonoApantisi(TypedDict):
     katastasi_asfaleias: str
     apothema_ekswterikis_dexamenis_kg: float
     synoliki_autonomia_me_dexameni_wres: float | None
+    trofodosia: TrofodosiaOxygonou
+    proeidopoiiseis: list[str]
     paradoxes: list[str]
 
 

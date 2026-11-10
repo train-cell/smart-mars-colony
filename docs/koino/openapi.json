@@ -3,7 +3,7 @@
   "info": {
     "title": "Smart Mars Colony Backend",
     "description": "Εκπαιδευτικό backend προσομοίωσης έξυπνης αποικίας στον Άρη (ακαδημαϊκό έτος 2026–2027)",
-    "version": "1.1.0"
+    "version": "1.1.1"
   },
   "paths": {
     "/api/v1/ygeia": {
@@ -11054,6 +11054,42 @@
           "isxys_w": {
             "type": "number",
             "title": "Isxys W"
+          },
+          "poiotita": {
+            "type": "string",
+            "title": "Poiotita",
+            "default": "agnwsti"
+          },
+          "xronos_metrisis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xronos Metrisis"
+          },
+          "pigi": {
+            "type": "string",
+            "title": "Pigi",
+            "default": "prosomoiwsi_modelou"
+          },
+          "metriseis": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MetrisiApantisi"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metriseis"
           }
         },
         "type": "object",
@@ -12055,6 +12091,16 @@
             ],
             "title": "Synoliki Autonomia Me Dexameni Wres"
           },
+          "trofodosia": {
+            "$ref": "#/components/schemas/TrofodosiaOxygonou"
+          },
+          "proeidopoiiseis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Proeidopoiiseis"
+          },
           "paradoxes": {
             "items": {
               "type": "string"
@@ -12076,6 +12122,8 @@
           "katastasi_asfaleias",
           "apothema_ekswterikis_dexamenis_kg",
           "synoliki_autonomia_me_dexameni_wres",
+          "trofodosia",
+          "proeidopoiiseis",
           "paradoxes"
         ],
         "title": "OxygonoApantisi"
@@ -14287,6 +14335,51 @@
           "apostasi_telos_m"
         ],
         "title": "TmimaProsomoiwsis"
+      },
+      "TrofodosiaOxygonou": {
+        "properties": {
+          "diarkeia_plirous_trofodosias_wres": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diarkeia Plirous Trofodosias Wres"
+          },
+          "pososto_syskevwn_tora": {
+            "type": "number",
+            "title": "Pososto Syskevwn Tora"
+          },
+          "pososto_syskevwn_meta": {
+            "type": "number",
+            "title": "Pososto Syskevwn Meta"
+          },
+          "onomastiki_paragwgi_kg_h": {
+            "type": "number",
+            "title": "Onomastiki Paragwgi Kg H"
+          },
+          "paragwgi_meta_kg_h": {
+            "type": "number",
+            "title": "Paragwgi Meta Kg H"
+          },
+          "poiotita_iliakis_pigis": {
+            "type": "string",
+            "title": "Poiotita Iliakis Pigis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "diarkeia_plirous_trofodosias_wres",
+          "pososto_syskevwn_tora",
+          "pososto_syskevwn_meta",
+          "onomastiki_paragwgi_kg_h",
+          "paragwgi_meta_kg_h",
+          "poiotita_iliakis_pigis"
+        ],
+        "title": "TrofodosiaOxygonou"
       },
       "VimaApantisi": {
         "properties": {
