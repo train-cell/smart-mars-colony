@@ -178,7 +178,7 @@ def test_phy03_oria_kai_sfalmata():
         ypologise_apothema_kai_autonomia_oxygonou(100.0, 293.0, 21000.0, 16000.0, 6, -0.04)
 
     # Παραβίαση κατωφλίου ασφαλείας (μερική πίεση <= κατώφλι)
-    moles, maza, auto, katastasi = ypologise_apothema_kai_autonomia_oxygonou(
+    posotita_mol, maza, autonomia, katastasi = ypologise_apothema_kai_autonomia_oxygonou(
         ogkos_m3=100.0,
         thermokrasia_k=293.0,
         meriki_piesi_oxygonou_pa=15000.0,  # κάτω από το κατώφλι 16000 Pa
@@ -187,9 +187,9 @@ def test_phy03_oria_kai_sfalmata():
         katanalwsi_ana_atomo_kg_h=0.04,
         rythmos_paragwgis_kg_h=0.0,
     )
-    assert moles == 0.0
+    assert posotita_mol == 0.0
     assert maza == 0.0
-    assert auto == 0.0
+    assert autonomia == 0.0
     assert katastasi == "katwfli_paraviasmeno"
 
 
@@ -209,7 +209,7 @@ def test_phy04_oria_kai_sfalmata():
         ypologise_ilektriko_isozygio_kai_autonomia(5.0, 5.0, 0.0, 0.0, -10.0)
 
     # Πλεόνασμα ή ισοζύγιο (παραγωγή >= φορτία)
-    fortia, elleimma, diathesimi, auto, katastasi = ypologise_ilektriko_isozygio_kai_autonomia(
+    fortia, elleimma, diathesimi, autonomia, katastasi = ypologise_ilektriko_isozygio_kai_autonomia(
         paragwgi_kw=20.0,
         krisima_fortia_kw=10.0,
         anavlita_fortia_kw=2.0,
@@ -220,11 +220,11 @@ def test_phy04_oria_kai_sfalmata():
     )
     assert elleimma == 0.0
     assert diathesimi == 40.0
-    assert auto is None
+    assert autonomia is None
     assert katastasi == "pleonasma_i_isozigio"
 
     # Έλλειμμα αλλά μηδενική διαθέσιμη ενέργεια (εκκένωση εφεδρείας)
-    fortia, elleimma, diathesimi, auto, katastasi = ypologise_ilektriko_isozygio_kai_autonomia(
+    fortia, elleimma, diathesimi, autonomia, katastasi = ypologise_ilektriko_isozygio_kai_autonomia(
         paragwgi_kw=5.0,
         krisima_fortia_kw=10.0,
         anavlita_fortia_kw=0.0,
@@ -235,7 +235,7 @@ def test_phy04_oria_kai_sfalmata():
     )
     assert elleimma == 5.0
     assert diathesimi == 0.0
-    assert auto == 0.0
+    assert autonomia == 0.0
     assert katastasi == "ekkenwsi_efedreias"
 
 
@@ -335,7 +335,7 @@ def test_phy07_oria_kai_sfalmata():
         ypologise_xrono_epistrofis_kai_asfaleia(2.0, 4.0, -0.6, 0.8, 0.2, 500.0)
 
     # Ανεπαρκής ενέργεια (μη ενεργειακά εφικτή επιστροφή)
-    res = ypologise_xrono_epistrofis_kai_asfaleia(
+    apotelesma = ypologise_xrono_epistrofis_kai_asfaleia(
         apostasi_km=10.0,
         taxytita_kmh=4.0,
         mesi_isxys_kw=1.0,  # 2.5 h * 1 kW = 2.5 kWh
@@ -344,6 +344,6 @@ def test_phy07_oria_kai_sfalmata():
         oratotita_m=1000.0,
         katastasi_tilemetrias="egkyri",
     )
-    assert res["energeiaka_efikto"] is False
-    assert res["synolika_asfalis_epistrofi"] is False
-    assert any("Ανεπαρκής ενέργεια" in p for p in res["proeidopoiiseis"])
+    assert apotelesma["energeiaka_efikto"] is False
+    assert apotelesma["synolika_asfalis_epistrofi"] is False
+    assert any("Ανεπαρκής ενέργεια" in stoixeio_pi for stoixeio_pi in apotelesma["proeidopoiiseis"])

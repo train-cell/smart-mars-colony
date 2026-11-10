@@ -3,7 +3,7 @@
 from fastapi.testclient import TestClient
 
 
-def test_irrigation_e2e_preview_confirm_cancel(pelatis_dokimwn: TestClient):
+def test_ardefsi_proepiskopisi_epivevaiwsi_akyrosi(pelatis_dokimwn: TestClient):
     """TEST-10: Πλήρης ροή άρδευσης: Ζώνη -> Επιθεώρηση -> Preview -> Confirm -> Μείωση στάθμης -> Ακύρωση."""
     id_thermokipiou = "thermokipio_01"
     id_zwnis = "zwni_01"
@@ -32,15 +32,16 @@ def test_irrigation_e2e_preview_confirm_cancel(pelatis_dokimwn: TestClient):
         headers={"X-Id-Xristi": "xristis_porwn"},
     )
     assert apantisi_prog.status_code == 200
-    prog = apantisi_prog.json()
-    id_programmatos = prog["id_programmatos"]
-    assert prog["katastasi"] == "programmatismeno"
-    assert prog["nea_stathmi_dexamenis_l"] == stathmi_prin - 100.0
+    programma = apantisi_prog.json()
+    id_programmatos = programma["id_programmatos"]
+    assert programma["katastasi"] == "programmatismeno"
+    assert programma["nea_stathmi_dexamenis_l"] == stathmi_prin
+    assert programma["desmevmeno_nero_l"] == 100
 
     # 4. Επαλήθευση ότι η δεξαμενή μειώθηκε ακριβώς μία φορά κατά 100 L
     apantisi_nerou_meta = pelatis_dokimwn.get("/api/v1/nero/dexamenes")
     stathmi_meta = apantisi_nerou_meta.json()["dexamenes"][0]["trexwn_ogkos_l"]
-    assert stathmi_meta == stathmi_prin - 100.0
+    assert stathmi_meta == stathmi_prin
 
     # 5. Ακύρωση προγράμματος και επιστροφή ποσότητας (TEST-25)
     apantisi_akyrosis = pelatis_dokimwn.post(
@@ -56,7 +57,7 @@ def test_irrigation_e2e_preview_confirm_cancel(pelatis_dokimwn: TestClient):
     assert stathmi_teliki == stathmi_prin
 
 
-def test_irrigation_insufficient_water_error(pelatis_dokimwn: TestClient):
+def test_ardefsi_me_aneparkes_nero(pelatis_dokimwn: TestClient):
     """TEST-11 & TEST-26: Απόρριψη άρδευσης όταν ζητείται νερό πάνω από το διαθέσιμο (όχι silent clamp)."""
     id_thermokipiou = "thermokipio_01"
     id_zwnis = "zwni_01"
@@ -67,7 +68,7 @@ def test_irrigation_insufficient_water_error(pelatis_dokimwn: TestClient):
         json={"id_zwnis": id_zwnis, "posotita_nerou_l": 50000.0, "diarkeia_lepta": 30},
         headers={"X-Id-Xristi": "xristis_porwn"},
     )
-    assert apantisi.status_code == 400
+    assert apantisi.status_code == 409
     sfalma = apantisi.json()["sfalma"]
     assert sfalma["kodikos"] == "ANEPARKES_NERO"
     assert "diathesimo_l" in sfalma["leptomereies"]

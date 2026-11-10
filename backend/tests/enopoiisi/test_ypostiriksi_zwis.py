@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def test_temperature_e2e_preview_confirm_status(pelatis_dokimwn: TestClient):
+def test_thermokrasia_proepiskopisi_epivevaiwsi_katastasi(pelatis_dokimwn: TestClient):
     """TEST-09: Πλήρης ροή αλλαγής θερμοκρασίας: Επιλογή -> Snapshot -> Preview -> Confirm -> Status."""
     id_xwrou = "xwros_01"
 
@@ -49,7 +49,7 @@ def test_temperature_e2e_preview_confirm_status(pelatis_dokimwn: TestClient):
     assert dedomena_meta["ekdosi_katastasis"] == ekdosi_prin + 1
 
 
-def test_temperature_fault_paths(pelatis_dokimwn: TestClient):
+def test_thermokrasia_periptwseis_apotyxias(pelatis_dokimwn: TestClient):
     """TEST-11: Σενάρια σφαλμάτων θερμοκρασίας (άκυρο εύρος, stale preview, μη εξουσιοδοτημένος ρόλος)."""
     id_xwrou = "xwros_01"
 
@@ -59,7 +59,7 @@ def test_temperature_fault_paths(pelatis_dokimwn: TestClient):
         json={"epithymiti_thermokrasia_k": 250.0, "anamenomeni_ekdosi_katastasis": 1},
         headers={"X-Id-Xristi": "xristis_zwis"},
     )
-    assert apantisi_xamilis.status_code == 400
+    assert apantisi_xamilis.status_code == 422
     sfalma = apantisi_xamilis.json()["sfalma"]
     assert sfalma["kodikos"] == "AKYRI_THERMOKRATIA"
 
@@ -73,10 +73,10 @@ def test_temperature_fault_paths(pelatis_dokimwn: TestClient):
     assert apantisi_anarmodios.json()["sfalma"]["kodikos"] == "ANARMODIOS_XRISTIS"
 
     # 3. Stale version (ανυπόστατη έκδοση κατάστασης -> 409 conflict)
-    apantisi_stale = pelatis_dokimwn.post(
+    apantisi_palias_proepiskopisis = pelatis_dokimwn.post(
         f"/api/v1/xwroi-katoikisis/{id_xwrou}/thermokrasia/proepiskopisi",
         json={"epithymiti_thermokrasia_k": 294.0, "anamenomeni_ekdosi_katastasis": 999},
         headers={"X-Id-Xristi": "xristis_zwis"},
     )
-    assert apantisi_stale.status_code == 409
-    assert apantisi_stale.json()["sfalma"]["kodikos"] == "STALE_PROEPISKOPISI"
+    assert apantisi_palias_proepiskopisis.status_code == 409
+    assert apantisi_palias_proepiskopisis.json()["sfalma"]["kodikos"] == "PALIA_PROEPISKOPISI"

@@ -12,6 +12,7 @@ from backend.app.montela.koinonika_symvanta import (
     Entoli,
     IstorikoElegxou,
     KatastasiProsomoiwsis,
+    Proepiskopisi,
     StigmiotypoSenariou,
     SymvanEntolis,
     Synagermos,
@@ -28,8 +29,8 @@ from backend.app.montela.poroi import (
     Thermokipio,
     ZwniThermokipiou,
 )
-from backend.app.montela.vasi_montelwn import VasiMontelwn, XronosStigmaMixin
-from backend.app.montela.xristes import MetavivasiDikaiwmatos, RolosXristiModel, Xristis
+from backend.app.montela.vasi_montelwn import VasiMontelwn, XronikaPedia
+from backend.app.montela.xristes import AnathesiRolouXristi, MetavivasiDikaiwmatos, Xristis
 from backend.app.montela.ypostiriksi_zwis import (
     Aisthitiras,
     Apoikia,
@@ -41,9 +42,9 @@ from backend.app.montela.ypostiriksi_zwis import (
 
 __all__ = [
     "VasiMontelwn",
-    "XronosStigmaMixin",
+    "XronikaPedia",
     "Xristis",
-    "RolosXristiModel",
+    "AnathesiRolouXristi",
     "MetavivasiDikaiwmatos",
     "Apoikia",
     "XwrosKatoikisis",
@@ -73,4 +74,5 @@ __all__ = [
     "Apofasi",
     "IstorikoElegxou",
     "KatastasiProsomoiwsis",
+    "Proepiskopisi",
 ]

@@ -1,6 +1,6 @@
 [project]
 name = "smart-mars-colony"
-version = "0.1.0"
+version = "1.1.0"
 description = "Εκπαιδευτικό backend προσομοίωσης έξυπνης αποικίας στον Άρη"
 readme = "README.md"
 requires-python = ">=3.12"

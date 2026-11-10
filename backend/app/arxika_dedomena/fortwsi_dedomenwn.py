@@ -10,30 +10,17 @@ from sqlalchemy.orm import Session
 
 from backend.app.montela import (
     Aisthitiras,
-    Apofasi,
+    AnathesiRolouXristi,
     Apoikia,
-    ApostoliOximatos,
     ApothemaOxygonou,
     DexameniNerou,
-    EktelesiSenariou,
     EnergeiakoFortio,
-    Entoli,
     ExwterikosKindynos,
     Fwtovoltaiko,
-    IstorikoElegxou,
     KatastasiProsomoiwsis,
-    MetavivasiDikaiwmatos,
     MetrisiAisthitira,
     OximaExerevnis,
-    ProgrammaAnakyklwsis,
-    ProgrammaArdefsis,
-    ProgrammaFwtismou,
     RoiNerou,
-    RolosXristiModel,
-    ShmeioDiadromis,
-    StigmiotypoSenariou,
-    SymvanEntolis,
-    Synagermos,
     SyskeviYpostiriksisZwis,
     Syssoreftis,
     Thermokipio,
@@ -41,68 +28,41 @@ from backend.app.montela import (
     XwrosKatoikisis,
     ZwniThermokipiou,
 )
-from backend.app.pyrinas.asfaleia import XRHSTES_DEMO
+from backend.app.pyrinas.asfaleia import XRISTES_EPIDEIKSIS
 
 
 def arxikopoiisi_dedomenwn_epideiksis(synedria: Session, epanarxikopoiisi: bool = False) -> None:
     """Εισάγει τα δεδομένα εκκίνησης της αποικίας αν δεν υπάρχουν ήδη."""
     if epanarxikopoiisi:
-        # Διαγραφή υφιστάμενων εγγραφών με σεβασμό στα foreign keys (παιδιά πριν από γονείς)
-        for pinakas in [
-            SymvanEntolis,
-            Entoli,
-            IstorikoElegxou,
-            Synagermos,
-            Apofasi,
-            StigmiotypoSenariou,
-            EktelesiSenariou,
-            ProgrammaArdefsis,
-            ProgrammaFwtismou,
-            ProgrammaAnakyklwsis,
-            MetavivasiDikaiwmatos,
-            ShmeioDiadromis,
-            ApostoliOximatos,
-            MetrisiAisthitira,
-            Aisthitiras,
-            SyskeviYpostiriksisZwis,
-            ApothemaOxygonou,
-            RoiNerou,
-            ZwniThermokipiou,
-            Thermokipio,
-            DexameniNerou,
-            Fwtovoltaiko,
-            Syssoreftis,
-            EnergeiakoFortio,
-            OximaExerevnis,
-            ExwterikosKindynos,
-            KatastasiProsomoiwsis,
-            XwrosKatoikisis,
-            Apoikia,
-            RolosXristiModel,
-            Xristis,
-        ]:
-            synedria.query(pinakas).delete()
-        synedria.commit()
+        from sqlalchemy import delete
+
+        from backend.app.montela.vasi_montelwn import VasiMontelwn
+
+        for pinakas in reversed(VasiMontelwn.metadata.sorted_tables):
+            synedria.execute(delete(pinakas))
+        synedria.expire_all()
 
     # Έλεγχος αν υπάρχουν ήδη δεδομένα
     if synedria.query(Xristis).first():
+        symplirwse_arxika_dedomena(synedria)
+        synedria.commit()
         return
 
     twrinos_xronos = datetime(2026, 11, 10, 12, 0, 0, tzinfo=timezone.utc)
 
     # 1. Χρήστες και Ρόλοι
-    for demo_x in XRHSTES_DEMO.values():
+    for xristis_epideiksis in XRISTES_EPIDEIKSIS.values():
         xristis = Xristis(
-            id_xristi=demo_x.id_xristi,
-            onoma=demo_x.onoma,
-            vasikos_rolos=demo_x.vasikos_rolos.value,
+            id_xristi=xristis_epideiksis.id_xristi,
+            onoma=xristis_epideiksis.onoma,
+            vasikos_rolos=xristis_epideiksis.vasikos_rolos.value,
             energos=True,
         )
         synedria.add(xristis)
-        for rolos in demo_x.energoi_roloi:
+        for rolos in xristis_epideiksis.energoi_roloi:
             synedria.add(
-                RolosXristiModel(
-                    id_xristi=demo_x.id_xristi,
+                AnathesiRolouXristi(
+                    id_xristi=xristis_epideiksis.id_xristi,
                     rolos=rolos.value,
                 )
             )
@@ -293,9 +253,9 @@ def arxikopoiisi_dedomenwn_epideiksis(synedria: Session, epanarxikopoiisi: bool 
     synedria.add(
         RoiNerou(
             id_dexamenis="dexameni_01",
-            typos_rois="anakyklwsi",
+            typos_rois="eisroi",
             rythmos_l_h=15.0,
-            perigrafi="Επιστροφή από κλειστό κύκλωμα ανακύκλωσης",
+            perigrafi="Προσομοιωμένη εξωτερική εισροή επεξεργασμένου νερού",
             xronos_katagrafis=twrinos_xronos,
         )
     )
@@ -408,9 +368,89 @@ def arxikopoiisi_dedomenwn_epideiksis(synedria: Session, epanarxikopoiisi: bool 
             simerino_vima=0,
             xronos_prosomoiwsis=twrinos_xronos,
             energo_senario=None,
-            seed=42,
+            sporos=42,
             einai_se_pausi=False,
         )
     )
 
+    synedria.flush()
+    symplirwse_arxika_dedomena(synedria)
     synedria.commit()
+
+
+def symplirwse_arxika_dedomena(synedria: Session) -> None:
+    """Συμπληρώνει νέες οντότητες χωρίς επαναφορά υπαρχόντων πόρων ή ιστορικού."""
+    from backend.app.ypiresies.metriseis_kai_poiotita import xronos_apoikias
+
+    xronos = xronos_apoikias(synedria)
+    if not synedria.get(DexameniNerou, "dexameni_gkrizou"):
+        synedria.add(
+            DexameniNerou(
+                id_dexamenis="dexameni_gkrizou",
+                onoma="Δεξαμενή Γκρίζου Νερού",
+                typos_nerou="gkrizo",
+                xwritikotita_l=2000,
+                trexwn_ogkos_l=1000,
+                efedreia_asfaleias_l=0,
+                ekdosi_katastasis=1,
+            )
+        )
+    for id_syskevis, typos, onoma, isxys in [
+        ("sysk_scrubber", "katharistis_dioxeidiou", "Καθαριστής διοξειδίου του άνθρακα", 200),
+        ("sysk_ilektrolysis", "ilektrolysi", "Παραγωγή οξυγόνου", 600),
+    ]:
+        if not synedria.get(SyskeviYpostiriksisZwis, id_syskevis):
+            synedria.add(
+                SyskeviYpostiriksisZwis(
+                    id_syskevis=id_syskevis,
+                    id_xwrou="xwros_01",
+                    typos_syskevis=typos,
+                    onoma=onoma,
+                    katastasi_leitourgias="energi",
+                    katanalwsi_isxyos_w=isxys,
+                )
+            )
+    for id_aisthitira, kodikos, typos, monada, timi in [
+        ("aisth_ygrasia_zwni_01", "zwni_01", "ygrasia_ypostrwmatos", "pososto", 0.55),
+        ("aisth_ygrasia_zwni_02", "zwni_02", "ygrasia_ypostrwmatos", "pososto", 0.58),
+        ("aisth_nero", "stathmi_nerou", "stathmi_nerou", "L", 7500),
+        ("aisth_piesi_exw", "piesi_exwteriki", "piesi_exwteriki", "Pa", 600),
+    ]:
+        if not synedria.get(Aisthitiras, id_aisthitira):
+            synedria.add(
+                Aisthitiras(
+                    id_aisthitira=id_aisthitira,
+                    kodikos_aisthitira=kodikos,
+                    typos_megethous=typos,
+                    yposystima="poroi" if "piesi" not in typos else "ypostiriksi_zwis",
+                    id_xwrou=None,
+                    monada=monada,
+                    katastasi="leitourgikos",
+                )
+            )
+            synedria.flush()
+            synedria.add(
+                MetrisiAisthitira(
+                    id_aisthitira=id_aisthitira,
+                    timi=timi,
+                    monada=monada,
+                    eidos="metrimeno",
+                    pigi="prosomoiwmenos_aisthitiras",
+                    poiotita="egkyro",
+                    tasi="statheri",
+                    apolyti_avevaiotita=0.01,
+                    xronos_metrisis=xronos,
+                    xronos_paralavis=xronos,
+                )
+            )
+    for roi in (
+        synedria.query(RoiNerou)
+        .filter(
+            RoiNerou.typos_rois == "anakyklwsi",
+            RoiNerou.perigrafi == "Επιστροφή από κλειστό κύκλωμα ανακύκλωσης",
+        )
+        .all()
+    ):
+        roi.typos_rois = "eisroi"
+        roi.perigrafi = "Προσομοιωμένη εξωτερική εισροή επεξεργασμένου νερού"
+    synedria.flush()

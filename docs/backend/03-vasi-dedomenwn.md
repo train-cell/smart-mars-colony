@@ -1,82 +1,43 @@
-# 03 - Σχεδιασμός Βάσης Δεδομένων και Μοντέλα
-
-## 1. Τεχνολογική Επιλογή και Ρυθμίσεις
-- **Μηχανή Βάσης:** SQLite 3 μέσω SQLAlchemy 2.0.
-- **Ενεργοποίηση Περιορισμών:** Σε κάθε σύνδεση εκτελείται αυτόματα `PRAGMA foreign_keys = ON;` ώστε να εξασφαλίζεται η ακεραιότητα αναφορών.
-- **Σειριοποίηση JSON:** Οι στήλες JSON χρησιμοποιούν ειδικό σειριοποιητή `json_serializer=lambda obj: json.dumps(obj, default=str)` για ασφαλή αποθήκευση `datetime` και DTO αντικειμένων.
-- **Διαχείριση Σχημάτων (Migrations):** Πλήρης υποστήριξη Alembic με λειτουργία batch mode (`render_as_batch=True`).
-
-## 2. Διάγραμμα Οντοτήτων - Συσχετίσεων (ERD)
+# Σχήμα, μεταναστεύσεις και διατήρηση δεδομένων
 
 ```mermaid
 erDiagram
-    XRISTIS ||--o{ METAVIVASI_DIKAIWMATOS : "ekxwrei / lamvanei"
-    XRISTIS ||--o{ KATAGRAFI_ELEGXOU : "ektelei"
-    XRISTIS ||--o{ ENTOLI : "ekdidei"
-    
-    THALAMOS ||--o{ METRISI_THALAMOU : "periexei"
-    THALAMOS ||--o{ RYTMIZOMENO_STOIXEIO_KLIMATOS : "elegxei"
-    THALAMOS ||--o{ SYNAGERMOS : "paragei"
-    
-    ZWNI_THERMOKIPIOU ||--o{ METRISI_EDAFOUS : "katagrafei"
-    ZWNI_THERMOKIPIOU ||--o{ PROGRAMMA_ARDEFSIS : "dexetai"
-    DEXAMENI_NEROU ||--o{ PROGRAMMA_ARDEFSIS : "trofodotei"
-    DEXAMENI_NEROU ||--o{ PROGRAMMA_ANAKYKLWSIS : "anakyklownei"
-    
-    MPATARIA_APOIKIAS ||--o{ METRISI_ISXYOS : "apothikevei"
-    FWTOVOLTAIKO_PEDIO ||--o{ METRISI_ISXYOS : "paragei"
-    ANAVALLOMENO_FORTIO ||--o{ METRISI_ISXYOS : "katanaliskei"
-    
-    OXIMA_ROVER ||--o{ APOSTOLI_EKSWTERIKIS_DRASTIRIOTITAS : "ektelei"
-    OXIMA_ROVER ||--o{ METRISI_OXIMATOS : "ekpempei"
-    APOSTOLI_EKSWTERIKIS_DRASTIRIOTITAS ||--o{ ENTOLI_OXIMATOS : "perilamvanei"
-
-    STIGMIOTYPO_SENARIOU ||--o{ METRISI_THALAMOU : "istoriko"
+    xristes ||--o{ roloi_xristwn : exei
+    xristes ||--o{ metavivaseis_dikaiwmatwn : paralambanei
+    xristes ||--o{ proepiskopiseis : dimiourgei
+    xwroi_katoikisis ||--o{ aisthitires : periexei
+    aisthitires ||--o{ metriseis_aisthitirwn : paragei
+    xwroi_katoikisis ||--o{ syskeves_ypostiriksis_zwis : exei
+    thermokipia ||--o{ zwnes_thermokipiou : exei
+    zwnes_thermokipiou ||--o{ programmata_ardefsis : programmatizei
+    zwnes_thermokipiou ||--o{ programmata_fwtismou : fwtizei
+    dexamenes_nerou ||--o{ roes_nerou : metrietai
+    dexamenes_nerou ||--o{ programmata_anakyklwsis : dexetai
+    oximata_exerevnis ||--o{ apostoles_oximatwn : ektelei
+    apostoles_oximatwn ||--o{ shmeia_diadromis : akolouthei
+    entoles ||--o{ symvanta_entolwn : katagrafei
+    ekteleseis_senariwn ||--o{ apofaseis : periexei
+    ekteleseis_senariwn ||--o{ stigmiotypa_senariwn : apothikevei
 ```
 
-## 3. Πίνακες και Οντότητες (31 Πίνακες Domain)
+Τα πραγματικά ονόματα κλειδιών και δείκτες βρίσκονται στα `montela/*.py`. Τα προγράμματα κρατούν προγραμματισμένη και εκτελεσμένη ποσότητα/ενέργεια, στόχο, παράθυρο χρόνου και συσχέτιση `id_entolis`. Η συσχέτιση αυτή είναι nullable χωρίς FK για αποφυγή κυκλικών εξαρτήσεων reset. Δεν διαφημίζεται ως σχέση που εγγυάται ξένο κλειδί. Το ιστορικό είναι append-only μέσω API· το αρχείο SQLite δεν είναι κρυπτογραφικά αμετάβλητο.
 
-Η υλοποίηση στο SQLAlchemy 2.0 οργανώνεται σε 31 διακριτούς πίνακες σε πλήρες Greeklish:
+Αλυσίδα: `1c63bef8cc3e` → `c551f5a42528`. Το αρχικό revision δεν αντικαθίσταται από «νέο αρχικό σχήμα». Η νέα μετανάστευση αναγνωρίζει παλιό `active_scenario` ή ήδη διορθωμένο `energo_senario`, προσθέτει μόνιμα previews/κατάσταση scheduler/ποιότητα/διαδρομές και μετονομάζει παλιά ιδιόκτητα πεδία σε Greeklish (`seed→sporos`, `email→ilektroniki_dieythynsi`, `roloi_xristwn.id→id_rolou`, `dedomena_snapshot→dedomena_stigmiotypou`).
 
-### 3.1 Χρήστες, Ρόλοι και Ασφάλεια
-- `xristes`: Στοιχεία χρηστών αποικίας και κατάσταση ενεργότητας.
-- `roloi_xristwn`: Ανάθεση βασικών και πρόσθετων ρόλων ανά χρήστη.
-- `metavivaseis_dikaiwmatwn`: Μεταβιβάσεις αρμοδιοτήτων με χρονικό περιθώριο λήξης (TTL) και κατάσταση ανάκλησης.
-- `istoriko_elegxou`: Αμετάβλητο αρχείο ελέγχου ενεργειών (audit trail).
+Η παλιά έκδοση αφαιρούσε άμεσα το νερό προγραμματισμένης άρδευσης. Η αναβάθμιση επιστρέφει αυτές τις εκκρεμείς δεσμεύσεις στη φυσική στάθμη μία φορά, ελέγχει χωρητικότητα **πριν από DDL** και γράφει αιτιολογημένο ιστορικό. Παλιές ιστορικές ροές άρδευσης απενεργοποιούνται. Αν το παλιό απόθεμα δεν συμφωνεί, η αναβάθμιση σταματά αντί να κρύψει την απόκλιση. Οι ήδη υπάρχουσες εγγραφές διατηρούνται· η επαναλήψιμη αρχικοποίηση προσθέτει μόνο τα νέα εκπαιδευτικά στοιχεία.
 
-### 3.2 Υποστήριξη Ζωής (ECLSS)
-- `apoikies`: Βασικά στοιχεία και παράμετροι αποικίας.
-- `xwroi_katoikisis`: Θάλαμοι διαβίωσης, εργασίας και εργαστηρίων.
-- `syskeves_ypostiriksis_zwis`: Θερμαντικά σώματα, ψύκτες, ανεμιστήρες και μονάδες κλίματος.
-- `apothema_oxygonou`: Αποθέματα και ρυθμοί παραγωγής/κατανάλωσης οξυγόνου.
+Σε κανονικές συνδέσεις ενεργοποιούνται FK, WAL και busy_timeout5s. Στο SQLite batch DDL τα FK απενεργοποιούνται προσωρινά στη συγκεκριμένη σύνδεση και έπειτα εκτελείται `PRAGMA foreign_key_check`. Το `alembic check` ελέγχει metadata/schema. Οι χρόνοι γράφονται UTC και ανακτώνται με offset· παλιά naive timestamps ερμηνεύονται ως UTC. Τα payloads νέων προγραμμάτων απαιτούν ζώνη ώρας.
 
-### 3.3 Πόροι & Ενέργεια
-- `thermokipia`: Εγκαταστάσεις θερμοκηπίων.
-- `zwnes_thermokipiou`: Ζώνες καλλιέργειας εντός των θερμοκηπίων.
-- `dexamenes_nerou`: Δεξαμενές καθαρού, γκρίζου και ακατέργαστου νερού.
-- `roes_nerou`: Ροές και ισοζύγιο υδατικών πόρων.
-- `programmata_ardefsis`: Προγράμματα άρδευσης ανά ζώνη θερμοκηπίου.
-- `programmata_anakyklwsis`: Προγραμματισμένοι κύκλοι ανακύκλωσης νερού.
-- `programmata_fwtismou`: Προγράμματα φωτισμού καλλιεργειών.
-- `fwtovoltaika`: Συστοιχίες ηλιακών συλλεκτών και φωτοβολταϊκών πάρκων.
-- `syssoreftes`: Συστήματα αποθήκευσης ενέργειας / μπαταρίες αποικίας (kWh, κατάσταση φόρτισης).
-- `energeiaka_fortia`: Ηλεκτρικά φορτία (κρίσιμα και αναβλητά).
+## Ασφαλής τοπική αναβάθμιση
 
-### 3.4 Αποστολές & Οχήματα Εξερεύνησης (Rover)
-- `oximata_exerevnis`: Στοιχεία rover, κατάσταση μπαταρίας, ταχύτητα, κατάσταση.
-- `apostoles_oximatwn`: Σχέδια αποστολών εξωτερικής δραστηριότητας (EVA), σημεία ενδιαφέροντος.
-- `shmeia_diadromis`: Σημεία πορείας και γεωγραφικές συντεταγμένες διαδρομών rover.
+Σταματήστε τον τοπικό διακομιστή. Κρατήστε συνεπές αντίγραφο με το SQLite backup API, και κρατήστε την παλιά έκδοση του κώδικα. Το απλό αντίγραφο του `.db` ενώ υπάρχει ενεργό WAL δεν είναι επαρκής διαδικασία.
 
-### 3.5 Αισθητήρες, Μετρήσεις και Τηλεμετρία
-- `aisthitires`: Κατάλογος αισθητήρων όλων των υποσυστημάτων.
-- `metriseis_aisthitirwn`: Ενιαίες χρονοσειρές μετρήσεων με ένδειξη ποιότητας, αβεβαιότητας και τάσης.
+```sh
+uv run --frozen alembic upgrade head
+uv run --frozen python -m scripts.arxika_dedomena
+uv run --frozen alembic check
+```
 
-### 3.6 Σενάρια, Συμβάντα και Εντολές
-- `entoles`: Καθολικός πίνακας διαχείρισης και ιχνηλάτησης εντολών.
-- `symvanta_entolwn`: Ιστορικό μεταβάσεων κατάστασης των εντολών.
-- `synagermoi`: Ενεργοί και ιστορικοί συναγερμοί της αποικίας.
-- `exwterikoi_kindynoi`: Εξωτερικοί περιβαλλοντικοί κίνδυνοι (αμμοθύελλες, ακτινοβολία).
-- `apofaseis`: Αποφάσεις και μέτρα αντιμετώπισης συμβάντων.
-- `katastasi_prosomoiwsis`: Κατάσταση του εικονικού ρολογιού και παραμέτρων προσομοίωσης.
-- `stigmiotypa_senariwn`: Στιγμιότυπα καταστάσεων για επαναφορά (snapshots).
-- `ekteleseis_senariwn`: Ιστορικό εκτελέσεων σεναρίων.
+Μην χρησιμοποιείτε reset για αναβάθμιση. Σε αποτυχία διατηρήστε το αρχικό αντίγραφο και διαγνώστε το μήνυμα. Για πλήρη επαναφορά σταματήστε τη σύνδεση, επαναφέρετε το backup μαζί με την αντίστοιχη έκδοση κώδικα και αφαιρέστε μόνο τα ασύμβατα προσωρινά WAL/SHM με κλειστές συνδέσεις. Το downgrade ελέγχεται ως προς το σχήμα, αλλά **δεν ανακτά νέα πεδία ή χρονικά αποτελέσματα**· η ασφαλής επιστροφή πραγματικών δεδομένων γίνεται από backup.
+
+Οι δοκιμές `test_metanastefseis_anavathmisis.py` ελέγχουν fresh upgrade, παλιό/νέο όνομα στήλης, διάσωση δεδομένων, συμφωνία δεσμεύσεων, FK, κύκλο downgrade/upgrade και `alembic check`.

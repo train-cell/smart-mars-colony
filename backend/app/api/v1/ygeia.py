@@ -1,19 +1,18 @@
 """Διαδρομές ελέγχου υγείας και μεταδεδομένων συστήματος (CORE-03)."""
 
-from typing import Any, Dict
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.app.pyrinas.rythmiseis import rythmiseis
+from backend.app.sxhmata.apantiseis import MetadedomenaApantisi, YgeiaApantisi
 from backend.app.vasi.synthesi import pare_synedria_vasis
 
-router = APIRouter(tags=["Υγεία & Μεταδεδομένα"])
+dromologitis = APIRouter(tags=["Υγεία & Μεταδεδομένα"])
 
 
-@router.get("/ygeia", summary="Έλεγχος υγείας του backend και της βάσης SQLite")
-def elegxos_ygeias(synedria: Session = Depends(pare_synedria_vasis)) -> Dict[str, Any]:
+@dromologitis.get("/ygeia", summary="Έλεγχος υγείας του backend και της βάσης SQLite")
+def elegxos_ygeias(synedria: Session = Depends(pare_synedria_vasis)) -> YgeiaApantisi:
     """Επιστρέφει την κατάσταση λειτουργίας του API, της βάσης και της έκδοσης."""
     vasi_energi = False
     try:
@@ -31,8 +30,8 @@ def elegxos_ygeias(synedria: Session = Depends(pare_synedria_vasis)) -> Dict[str
     }
 
 
-@router.get("/metadedomena", summary="Μεταδεδομένα, μονάδες μέτρησης και διαθέσιμα statuses")
-def pare_metadedomena() -> Dict[str, Any]:
+@dromologitis.get("/metadedomena", summary="Μεταδεδομένα, μονάδες μέτρησης και διαθέσιμα statuses")
+def pare_metadedomena() -> MetadedomenaApantisi:
     """Επιστρέφει τις υποστηριζόμενες μονάδες SI, τα διαθέσιμα enums και συμβάσεις."""
     return {
         "monades_si": {
@@ -53,6 +52,9 @@ def pare_metadedomena() -> Dict[str, Any]:
             "xronos": "h",
         },
         "katastaseis_entolwn": [
+            "programmatismeno",
+            "se_anamoni",
+            "anastoli",
             "protathike",
             "proepiskopithike",
             "epivevaiwthike",

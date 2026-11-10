@@ -10,6 +10,8 @@ from typing import Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from backend.app.pyrinas.katagrafi import id_trexontos_aitimatos
+
 
 class KodikosSfalmatos(str, Enum):
     """Κωδικοί σφαλμάτων domain."""
@@ -22,7 +24,8 @@ class KodikosSfalmatos(str, Enum):
     ANARMODIOS_XRISTIS = "ANARMODIOS_XRISTIS"
     DEN_VRETHIKE = "DEN_VRETHIKE"
     SYNTHIKI_SYGGROUSIS = "SYNTHIKI_SYGGROUSIS"
-    STALE_PROEPISKOPISI = "STALE_PROEPISKOPISI"
+    PALIA_PROEPISKOPISI = "PALIA_PROEPISKOPISI"
+    APOUSIA_TAFTOTITAS = "APOUSIA_TAFTOTITAS"
     ANEPARKIS_ENERGEIA = "ANEPARKIS_ENERGEIA"
     MH_ASPHALIS_KATASTASI = "MH_ASPHALIS_KATASTASI"
     APOTYXIA_EPIKOINWNIAS = "APOTYXIA_EPIKOINWNIAS"
@@ -31,7 +34,7 @@ class KodikosSfalmatos(str, Enum):
     ESWTERIKO_SFALMA = "ESWTERIKO_SFALMA"
 
 
-class SfalmaDomain(Exception):
+class SfalmaKanona(Exception):
     """Βασική εξαίρεση domain επιχειρησιακών κανόνων."""
 
     def __init__(
@@ -47,7 +50,7 @@ class SfalmaDomain(Exception):
         self.minyma = minyma
         self.katastasi_http = katastasi_http
         self.leptomereies = leptomereies or {}
-        self.id_aitimatos = id_aitimatos
+        self.id_aitimatos = id_aitimatos or id_trexontos_aitimatos.get()
         self.epanalipsimo = epanalipsimo
         super().__init__(minyma)
 
@@ -64,9 +67,9 @@ class SfalmaDomain(Exception):
         }
 
 
-async def xeiristis_sfalmatos_domain(request: Request, exc: SfalmaDomain) -> JSONResponse:
+async def xeiristis_sfalmatos_domain(aitima_http: Request, sfalma: SfalmaKanona) -> JSONResponse:
     """FastAPI handler για εξαιρέσεις SfalmaDomain."""
     return JSONResponse(
-        status_code=exc.katastasi_http,
-        content=exc.se_lexiko(),
+        status_code=sfalma.katastasi_http,
+        content=sfalma.se_lexiko(),
     )

@@ -3,13 +3,13 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.montela.vasi_montelwn import VasiMontelwn, XronosStigmaMixin
+from backend.app.montela.vasi_montelwn import VasiMontelwn, XronikaPedia, XronosUTC
 
 
-class Apoikia(VasiMontelwn, XronosStigmaMixin):
+class Apoikia(VasiMontelwn, XronikaPedia):
     """Αποικία στον Άρη."""
 
     __tablename__ = "apoikies"
@@ -23,7 +23,7 @@ class Apoikia(VasiMontelwn, XronosStigmaMixin):
     )
 
 
-class XwrosKatoikisis(VasiMontelwn, XronosStigmaMixin):
+class XwrosKatoikisis(VasiMontelwn, XronikaPedia):
     """Χώρος κατοίκησης / habitat της αποικίας."""
 
     __tablename__ = "xwroi_katoikisis"
@@ -36,6 +36,12 @@ class XwrosKatoikisis(VasiMontelwn, XronosStigmaMixin):
     plithysmos: Mapped[int] = mapped_column(Integer, default=4)
     ogkos_m3: Mapped[float] = mapped_column(Float, default=1000.0)
     epifaneia_m2: Mapped[float] = mapped_column(Float, default=500.0)
+    thermiki_xwritikotita_j_k: Mapped[float] = mapped_column(
+        Float, default=1e7, server_default="10000000"
+    )
+    rythmos_diarrois_piesis_pa_h: Mapped[float] = mapped_column(
+        Float, default=0.0, server_default="0"
+    )
     syntelestis_thermoperatotitas_u: Mapped[float] = mapped_column(Float, default=0.2)
 
     # Θερμοκρασίες [K]
@@ -49,8 +55,10 @@ class XwrosKatoikisis(VasiMontelwn, XronosStigmaMixin):
     pososto_dioxeidiou_anthraka: Mapped[float] = mapped_column(Float, default=0.0004)  # 400 ppm
     sxetiki_ygrasia: Mapped[float] = mapped_column(Float, default=0.45)  # 45%
 
-    # Optimistic locking version
+    # Έκδοση αισιόδοξου ταυτοχρονισμού
     ekdosi_katastasis: Mapped[int] = mapped_column(Integer, default=1)
+
+    __mapper_args__ = {"version_id_col": ekdosi_katastasis}
 
     apoikia: Mapped["Apoikia"] = relationship("Apoikia", back_populates="xwroi")
     syskeves: Mapped[list["SyskeviYpostiriksisZwis"]] = relationship(
@@ -61,7 +69,7 @@ class XwrosKatoikisis(VasiMontelwn, XronosStigmaMixin):
     )
 
 
-class SyskeviYpostiriksisZwis(VasiMontelwn, XronosStigmaMixin):
+class SyskeviYpostiriksisZwis(VasiMontelwn, XronikaPedia):
     """Εξοπλισμός υποστήριξης ζωής (θερμαντήρας, scrubber CO2, ηλεκτρόλυση)."""
 
     __tablename__ = "syskeves_ypostiriksis_zwis"
@@ -80,7 +88,7 @@ class SyskeviYpostiriksisZwis(VasiMontelwn, XronosStigmaMixin):
     xwros: Mapped["XwrosKatoikisis"] = relationship("XwrosKatoikisis", back_populates="syskeves")
 
 
-class ApothemaOxygonou(VasiMontelwn, XronosStigmaMixin):
+class ApothemaOxygonou(VasiMontelwn, XronikaPedia):
     """Αποθηκευμένο εφεδρικό οξυγόνο σε δεξαμενές πίεσης."""
 
     __tablename__ = "apothema_oxygonou"
@@ -98,7 +106,7 @@ class ApothemaOxygonou(VasiMontelwn, XronosStigmaMixin):
     )
 
 
-class Aisthitiras(VasiMontelwn, XronosStigmaMixin):
+class Aisthitiras(VasiMontelwn, XronikaPedia):
     """Αισθητήρας μέτρησης φυσικών μεγεθών."""
 
     __tablename__ = "aisthitires"
@@ -139,6 +147,7 @@ class MetrisiAisthitira(VasiMontelwn):
     tasi: Mapped[str] = mapped_column(String(30), default="statheri")
     apolyti_avevaiotita: Mapped[float] = mapped_column(Float, default=0.1)
     einai_palio: Mapped[bool] = mapped_column(Boolean, default=False)
-    xronos_metrisis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_paralavis: Mapped[Optional[datetime]] = mapped_column(XronosUTC(), nullable=True)
+    xronos_metrisis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
 
     aisthitiras: Mapped["Aisthitiras"] = relationship("Aisthitiras", back_populates="metriseis")

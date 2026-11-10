@@ -13,6 +13,7 @@ from backend.app.montela.koinonika_symvanta import (
     Synagermos,
 )
 from backend.app.montela.xristes import MetavivasiDikaiwmatos
+from backend.app.pyrinas.katagrafi import id_trexontos_aitimatos
 
 
 class ApothikiKoinwn:
@@ -105,7 +106,7 @@ class ApothikiKoinwn:
             palia_timi=palia_timi,
             nea_timi=nea_timi,
             aitiologia=aitiologia,
-            id_aitimatos=id_aitimatos,
+            id_aitimatos=id_aitimatos or id_trexontos_aitimatos.get(),
             xronos_katagrafis=datetime.now(timezone.utc),
         )
         self.synedria.add(grammi)
@@ -145,7 +146,7 @@ class ApothikiKoinwn:
                 id_katastasis=1,
                 simerino_vima=0,
                 xronos_prosomoiwsis=datetime.now(timezone.utc),
-                seed=42,
+                sporos=42,
             )
             self.synedria.add(katastasi)
             self.synedria.flush()

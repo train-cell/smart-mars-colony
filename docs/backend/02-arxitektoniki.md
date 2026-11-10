@@ -1,76 +1,37 @@
-# 02 - Αρχιτεκτονική Συστήματος
-
-## 1. Πολυεπίπεδη Αρχιτεκτονική (Layered Architecture)
-Το backend του **Smart Mars Colony** ακολουθεί αρχιτεκτονική διαχωρισμού ευθυνών (Separation of Concerns) με αυστηρά οριοθετημένα επίπεδα:
+# Αρχιτεκτονική και κύκλος εντολής
 
 ```mermaid
 flowchart TD
-    Client[Πελάτης / Frontend Dashboard] -->|HTTP / JSON API| API[Επίπεδο API / FastAPI Endpoints]
-    
-    subgraph Backend Core
-        API --> Ypiresies[Επίπεδο Υπηρεσιών / Services]
-        Ypiresies --> FysikaMontela[Αμιγή Φυσικά Μοντέλα / Physics]
-        Ypiresies --> Apothikes[Επίπεδο Αποθηκών / Repositories]
-        Apothikes --> ORM[Μοντέλα SQLAlchemy ORM]
-        ORM --> DB[(Βάση Δεδομένων SQLite)]
-    end
-
-    subgraph Cross-Cutting Concerns
-        Asfaleia[Ασφάλεια RBAC & Delegation] -.-> API
-        Sfalmata[Τυποποιημένα Σφάλματα & Handlers] -.-> API
-        Prosomoiwsi[Εικονικό Ρολόι & Σενάρια] -.-> Ypiresies
-    end
+    UI[Διεπαφή] --> API[FastAPI / Pydantic]
+    API --> RB[Ταυτότητα και ρόλοι βάσης]
+    API --> YP[Υπηρεσίες επιχειρησιακών κανόνων]
+    YP --> FY[Καθαρές συναρτήσεις φυσικής]
+    YP --> PR[Μόνιμες προεπισκοπήσεις και εντολές]
+    YP --> AP[Αποθήκες SQLAlchemy]
+    AP --> DB[(SQLite)]
+    VI[Ρητό βήμα χρόνου] --> PO[Χρονοπρογραμματιστής πόρων]
+    PO --> ZW[Θερμική / ατμοσφαιρική εξέλιξη]
+    ZW --> OX[Παραλαβή και κίνηση rover]
+    OX --> ME[Μετρήσεις / συναγερμοί / στιγμιότυπο]
+    ME --> DB
 ```
 
-## 2. Περιγραφή Επιπέδων
-
-### 2.1 Επίπεδο Διεπαφής (API Routers - `backend/app/api/v1/`)
-- Υπεύθυνο για την επικύρωση εισόδου (Pydantic DTOs), την ανάλυση επικεφαλίδων ταυτοποίησης (`X-ID-Xristi`, `X-Rolos`, `Idempotency-Key`), και τη δρομολόγηση στις αντίστοιχες υπηρεσίες.
-- Επιστρέφει τυποποιημένες αποκρίσεις και διαχειρίζεται τα HTTP status codes.
-
-### 2.2 Επίπεδο Υπηρεσιών (Domain Services - `backend/app/ypiresies/`)
-- Υλοποιεί την επιχειρησιακή λογική της αποικίας.
-- Συνδυάζει φυσικούς υπολογισμούς με αποθήκευση κατάστασης, ελέγχει τα όρια ασφαλείας, παράγει συναγερμούς και καταγράφει ενέργειες στο ιστορικό ελέγχου.
-- Υποστηρίζει τη διφασική εκτέλεση εντολών: Προεπισκόπηση (`proepiskopisi`) -> Επιβεβαίωση (`epivevaiwsi`) ή Ακύρωση (`akyrwsi`).
-
-### 2.3 Επίπεδο Φυσικών Μοντέλων (Pure Physics Models - `backend/app/fysika_montela/`)
-- Αμιγείς συναρτήσεις χωρίς παρενέργειες (stateless & pure functions).
-- Εφαρμόζουν φυσικούς νόμους μεταφοράς θερμότητας, ηλιακής ισχύος, ηλεκτροχημικής αποθήκευσης, κινηματικής rover και διατήρησης μάζας.
-- Επιτρέπουν εξαντλητικές δοκιμές μονάδας (unit tests) με απόλυτο ντετερμινισμό.
-
-### 2.4 Επίπεδο Αποθηκών (Repositories - `backend/app/apothikes/`)
-- Απομονώνει την πρόσβαση στη βάση δεδομένων και τη σύνταξη ερωτημάτων SQLAlchemy.
-- Παρέχει μεθόδους εύρεσης, καταχώρισης και ενημέρωσης οντοτήτων.
-
-### 2.5 Επίπεδο Δεδομένων (ORM & SQLite - `backend/app/montela/`)
-- Ορισμός 24 πινάκων που καλύπτουν όλες τις οντότητες της αποικίας.
-- Αυστηρή επιβολή ξένων κλειδιών (`PRAGMA foreign_keys = ON;`).
-
-## 3. Ροή Εκτέλεσης Διφασικής Εντολής (Preview - Confirm Pattern)
+Το API επικυρώνει το αίτημα και την ταυτότητα. Η υπηρεσία αναλαμβάνει τον επιχειρησιακό κανόνα, η αποθήκη τα ερωτήματα και ο μαθηματικός πυρήνας τις μονάδες/εξισώσεις. Τα κοινά DTO δεν εισάγουν δρομολογητές. Το lifespan χρησιμοποιεί τον ίδιο πάροχο συνεδρίας με τα tests και δεν εισάγει δεδομένα επίδειξης σε παραγωγικό περιβάλλον.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Xristis as Χειριστής / Ρόλος
-    participant API as FastAPI Router
-    participant Serv as Υπηρεσία (Service)
-    participant Phys as Φυσικό Μοντέλο
-    participant Repo as Αποθήκη (Repo / DB)
-
-    Xristis->>API: POST /proepiskopisi (αιτούμενες παράμετροι)
-    API->>Serv: dimiourgia_proepiskopisis(...)
-    Serv->>Phys: ypologismos_epiptwsewn(...)
-    Phys-->>Serv: προβλέψεις (π.χ. ΔP, αυτονομία, ρίσκο)
-    Serv->>Repo: apothikefsi_proepiskopisis (TTL / εκκρεμής)
-    Repo-->>Serv: id_proepiskopisis
-    Serv-->>API: DTO Προεπισκόπησης (προβλέψεις & id)
-    API-->>Xristis: 200 OK {id_proepiskopisis, ektimwmeni_energeia, ...}
-
-    Xristis->>API: POST /epivevaiwsi {id_proepiskopisis} + Idempotency-Key
-    API->>Serv: epivevaiwsi_entolis(id_proepiskopisis)
-    Serv->>Repo: anaktisi_kai_elegxos_egkyrotitas()
-    Serv->>Repo: efarmogi_allagwn() & katagrafi_entolis() & audit_log()
-    Repo-->>Serv: oristiki_entoli
-    Serv-->>API: DTO Επιβεβαιωμένης Εντολής
-    API-->>Xristis: 200 OK (Εντολή σε εκτέλεση / επιβεβαιωμένη)
+stateDiagram-v2
+    [*] --> proepiskopisi
+    proepiskopisi --> aporripsi: λήξη / αλλαγή εισόδων / άλλο πεδίο
+    proepiskopisi --> programmatismeno: επιβεβαίωση πόρων
+    programmatismeno --> akyrothike: πριν από εκτέλεση
+    programmatismeno --> se_exelixi: χρόνος έναρξης
+    se_exelixi --> oloklirothike: πραγματικό αποτέλεσμα
+    se_exelixi --> apetyxe: ανεπαρκείς πόροι
+    proepiskopisi --> se_anamoni: καθυστέρηση ζεύξης
+    proepiskopisi --> avevaio: χαμένη παραλαβή
+    avevaio --> se_exelixi: επιβεβαιωμένη παραλαβή μετά την αποκατάσταση
 ```
+
+Οι κοινές βοηθητικές συναρτήσεις δεν κάνουν commit. Η σύνθετη απόφαση καταιγίδας καταναλώνει preview, εφαρμόζει πολιτική, υποβάλλει τυχόν εντολή rover και γράφει απόφαση/ιστορικό σε μία συναλλαγή. Η αποτυχία επαναφέρει όλα αυτά. Το no-op UPDATE στο κοινό ρολόι αποκτά SQLite writer lock πριν από κρίσιμες αναγνώσεις· το `version_id_col` εμποδίζει παλιά εγγραφή χώρου/δεξαμενής. Τα previews συγκρίνουν πλήρη δεδομένα που επηρεάζουν τον υπολογισμό. Τα αιτήματα επανάληψης δεσμεύονται σε χρήστη/ενέργεια/στόχο/σώμα.
+
+Οι χρονοπρογραμματιστές δεν εκκινούν κρυφό νήμα ούτε αλλάζουν το ρολόι μόνοι τους. Το κοινό βήμα είναι ο μοναδικός ενορχηστρωτής. Οι εσωτερικές καταστάσεις δεν περνούν όλες υποχρεωτικά από κάθε θεωρητικό στάδιο: μία τοπική αλλαγή στόχου επιβεβαιώνεται άμεσα, ενώ μία εντολή με καθυστέρηση απαιτεί μεταγενέστερη παραλαβή.

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.apothikes.apothiki_apostolwn import ApothikiApostolwn
@@ -16,6 +17,12 @@ from backend.app.fysika_montela.fysika_montela import (
     ypologise_isxy_fwtovoltaikou,
     ypologise_xrono_epistrofis_kai_asfaleia,
 )
+from backend.app.montela import (
+    Aisthitiras,
+    DexameniNerou,
+    KatastasiProsomoiwsis,
+    StigmiotypoSenariou,
+)
 from backend.app.montela.apostoles import ExwterikosKindynos, OximaExerevnis
 from backend.app.montela.koinonika_symvanta import Apofasi, EktelesiSenariou
 from backend.app.montela.poroi import EnergeiakoFortio, Fwtovoltaiko
@@ -24,8 +31,22 @@ from backend.app.montela.ypostiriksi_zwis import (
     SyskeviYpostiriksisZwis,
     XwrosKatoikisis,
 )
-from backend.app.pyrinas.asfaleia import DedomenaXristi, RolosXristi
-from backend.app.pyrinas.sfalmata import KodikosSfalmatos, SfalmaDomain
+from backend.app.pyrinas.asfaleia import DedomenaXristi, RolosXristi, pare_xristi_apo_vasi
+from backend.app.pyrinas.sfalmata import KodikosSfalmatos, SfalmaKanona
+from backend.app.ypiresies.entoles_kai_proepiskopiseis import (
+    dimiourgise_proepiskopisi,
+    katanalwse_proepiskopisi,
+    kataxwrise_entoli,
+    kleidwse_synallagi,
+    pare_epanalipsi,
+    pare_proepiskopisi,
+)
+from backend.app.ypiresies.metriseis_kai_poiotita import (
+    ananeose_metriseis,
+    pare_egkyri_metrisi,
+    xronos_apoikias,
+)
+from backend.app.ypiresies.synagermoi_kai_synthikes import enimerwse_synagermous
 
 
 class YpiresiaSymvantwnKaiSenariwn:
@@ -38,6 +59,566 @@ class YpiresiaSymvantwnKaiSenariwn:
         self.apothiki_porwn = ApothikiPorwn(synedria)
         self.apothiki_apostolwn = ApothikiApostolwn(synedria)
 
+    def elegxe_rolo_synagermou(self, synagermos, xristis):
+        """Οι εξουσιοδοτήσεις επίλυσης περιορίζονται στο αντίστοιχο υποσύστημα."""
+        rolos = {
+            "ypostiriksi_zwis": RolosXristi.YPEFTHYNOS_YPOSTIRIKSIS_ZWIS,
+            "poroi": RolosXristi.YPEFTHYNOS_PORWN,
+            "apostoles": RolosXristi.YPEFTHYNOS_APOSTOLWN,
+        }.get(synagermos.yposystima)
+        egkyros = pare_xristi_apo_vasi(
+            self.synedria, xristis.id_xristi, pedia={synagermos.yposystima}
+        )
+        if (
+            egkyros.vasikos_rolos != RolosXristi.SYNTONISTIS_APOIKIAS
+            and rolos not in egkyros.energoi_roloi
+        ):
+            raise SfalmaKanona(
+                KodikosSfalmatos.ANARMODIOS_XRISTIS,
+                "Απαιτείται υπεύθυνος του αντίστοιχου υποσυστήματος.",
+                403,
+            )
+
+    def stigmiotypo_senariou(self):
+        """Ενιαία έκδοση των πραγματικών πόρων, φορτίων και εξωτερικών συνθηκών."""
+        return {
+            "xwroi": [
+                [
+                    x.id_xwrou,
+                    x.ekdosi_katastasis,
+                    x.epithymiti_thermokrasia_k,
+                    x.thermokrasia_exwteriki_k,
+                ]
+                for x in self.apothiki_zwis.pare_xwrous()
+            ],
+            "pv": [
+                [
+                    stoixeio_pi.id_fwtovoltaikou,
+                    stoixeio_pi.aktinovolia_w_m2,
+                    stoixeio_pi.syntelestis_epikathisis_f,
+                ]
+                for stoixeio_pi in self.apothiki_porwn.pare_fwtovoltaika()
+            ],
+            "syssoreftes": [
+                [stoixeio_sigma.id_syssorefti, stoixeio_sigma.energeia_kwh]
+                for stoixeio_sigma in self.apothiki_porwn.pare_syssoreftes()
+            ],
+            "fortia": [
+                [stoixeio_zita.id_fortiou, stoixeio_zita.isxys_kw, stoixeio_zita.energo]
+                for stoixeio_zita in self.apothiki_porwn.pare_energeiaka_fortia()
+            ],
+            "nero": [
+                [stoixeio_delta.id_dexamenis, stoixeio_delta.trexwn_ogkos_l]
+                for stoixeio_delta in self.apothiki_porwn.pare_dexamenes_nerou()
+            ],
+            "oximata": [
+                [o.id_oximatos, o.ekdosi_katastasis, o.energeia_kwh, o.katastasi_epikoinwnias]
+                for o in self.apothiki_apostolwn.pare_oximata()
+            ],
+        }
+
+    def proepiskopisi_senariou_kataigidas(self, xristis=None):
+        """Υπολογίζει το σενάριο από τις σημερινές παραδοχές, διατηρώντας τα δοσμένα εξωτερικά inputs."""
+        for onoma in ("aisth_aktinovolia", "aisth_skoni", "aisth_thermokrasia_exw"):
+            pare_egkyri_metrisi(self.synedria, onoma)
+        from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
+
+        xwroi = self.apothiki_zwis.pare_xwrous()
+        pv = self.apothiki_porwn.pare_fwtovoltaika()
+        energeia = YpiresiaPorwn(self.synedria).pare_katastasi_energeias()
+        synoliki_kwh = sum(
+            stoixeio_sigma.energeia_kwh for stoixeio_sigma in self.apothiki_porwn.pare_syssoreftes()
+        )
+        thermansi_arxiki = (
+            sum(
+                ypologise_apaitisi_thermansis(
+                    x.syntelestis_thermoperatotitas_u,
+                    x.epifaneia_m2,
+                    x.epithymiti_thermokrasia_k,
+                    213,
+                )
+                for x in xwroi
+            )
+            / 1000
+        )
+        thermansi_kataigidas = (
+            sum(
+                ypologise_apaitisi_thermansis(
+                    x.syntelestis_thermoperatotitas_u,
+                    x.epifaneia_m2,
+                    x.epithymiti_thermokrasia_k,
+                    193,
+                )
+                for x in xwroi
+            )
+            / 1000
+        )
+        pv_arxiko = (
+            sum(
+                ypologise_isxy_fwtovoltaikou(
+                    stoixeio_pi.apodosi_eta, stoixeio_pi.epifaneia_m2, 300, 0.8
+                )
+                for stoixeio_pi in pv
+            )
+            / 1000
+        )
+        pv_kataigidas = (
+            sum(
+                ypologise_isxy_fwtovoltaikou(
+                    stoixeio_pi.apodosi_eta, stoixeio_pi.epifaneia_m2, 80, 0.5
+                )
+                for stoixeio_pi in pv
+            )
+            / 1000
+        )
+        fortia = self.apothiki_porwn.pare_energeiaka_fortia()
+        loipa_krisima = sum(
+            stoixeio_zita.isxys_kw
+            for stoixeio_zita in fortia
+            if stoixeio_zita.einai_krisimo
+            and stoixeio_zita.energo
+            and stoixeio_zita.id_fortiou != "fortio_thermansis"
+        )
+        anavlita = sum(
+            stoixeio_zita.isxys_kw
+            for stoixeio_zita in fortia
+            if stoixeio_zita.einai_anavlito and stoixeio_zita.energo
+        )
+
+        def isozygio(thermansi, paragwgi, fortia_anavlita):
+            synolika, elleimma, _, autonomia, _ = ypologise_ilektriko_isozygio_kai_autonomia(
+                paragwgi,
+                thermansi + loipa_krisima,
+                fortia_anavlita,
+                0,
+                synoliki_kwh,
+                efedreia_idi_afairemeni=True,
+            )
+            return {"fortia_kw": synolika, "elleimma_kw": elleimma, "autonomia_wres": autonomia}
+
+        arxiki = isozygio(thermansi_arxiki, pv_arxiko, anavlita)
+        kataigida = isozygio(thermansi_kataigidas, pv_kataigidas, anavlita)
+        pausi = isozygio(thermansi_kataigidas, pv_kataigidas, 0)
+        kerdos = (
+            (pausi["autonomia_wres"] - kataigida["autonomia_wres"])
+            if pausi["autonomia_wres"] is not None and kataigida["autonomia_wres"] is not None
+            else None
+        )
+        pausi.update(kerdos_wres=kerdos, kerdos_lepta=kerdos * 60 if kerdos is not None else None)
+        oxima = self.synedria.get(OximaExerevnis, "rover_01")
+        axiologisi = (
+            ypologise_xrono_epistrofis_kai_asfaleia(
+                oxima.apostasi_apo_vasi_km,
+                oxima.taxytita_kmh,
+                oxima.isxys_kinisis_kw,
+                oxima.energeia_kwh,
+                oxima.efedreia_kwh,
+                100,
+                "ypovathmismeni",
+            )
+            if oxima
+            else None
+        )
+        apantisi = {
+            "senario": "kataigida_skonis_2026",
+            "statistika_senariou": {
+                "fwtovoltaika": {
+                    "arxiki_kw": pv_arxiko,
+                    "kataigida_kw": pv_kataigidas,
+                    "ptwsi_kw": pv_arxiko - pv_kataigidas,
+                },
+                "thermansi": {
+                    "arxiki_kw": thermansi_arxiki,
+                    "kataigida_kw": thermansi_kataigidas,
+                    "afksisi_kw": thermansi_kataigidas - thermansi_arxiki,
+                },
+                "fortia_kai_autonomia": {
+                    "arxiki_katastasi": arxiki,
+                    "kataigida_me_anavlita": kataigida,
+                    "kataigida_me_pausi_anavlhtwn": pausi,
+                },
+                "oxima": axiologisi,
+            },
+            "trexousa_energeia": energeia["isozygio"],
+            "epiloges_apofasis": [
+                {"kodikos": kleidi, "titlos": stoixeio_taf}
+                for kleidi, stoixeio_taf in [
+                    ("kamia_allagi", "Παρακολούθηση χωρίς περιορισμό"),
+                    ("pausi_anavlhtwn", "Αναστολή αναβλητών φορτίων"),
+                    ("anaklisi_oximatos", "Ανάκληση μόνο εφόσον είναι ασφαλής"),
+                    ("asfalis_stasi_oximatos", "Εντολή ασφαλούς στάσης"),
+                    ("syndyasmos_pliroys_asfaleias", "Αναστολή φορτίων και εντολή ασφαλούς στάσης"),
+                ]
+            ],
+            "epiptwseis": {
+                "thermokipio": "Η αναστολή περιορίζει φωτισμό/ανακύκλωση/φόρτιση και μπορεί να αναβάλει προγράμματα.",
+                "nero": "Ο προγραμματισμός πρέπει να επανελεγχθεί με τα αποθέματα και τη διαθέσιμη ισχύ.",
+                "ypostiriksi_zwis": "Τα κρίσιμα φορτία παραμένουν προτεραιότητα.",
+            },
+            "paradoxes": [
+                "Εξωτερικές συνθήκες καταιγίδας G=80 W/m², f=0,5, Te=193 K, ορατότητα100m.",
+                "Σταθερές συνθήκες στον ορίζοντα πρόβλεψης· η κρίση παραμένει ακόμη και με μεγαλύτερη αυτονομία.",
+            ],
+            "apaiteitai_egkrisi_syntonisti": True,
+        }
+        if xristis:
+            apantisi = dimiourgise_proepiskopisi(
+                self.synedria,
+                "apofasi_kataigidas",
+                "kataigida_skonis_2026",
+                xristis,
+                apantisi,
+                self.stigmiotypo_senariou(),
+            )
+            self.synedria.commit()
+        return apantisi
+
+    def katagrafi_stigmiotypou(self, titlos):
+        from backend.app.ypiresies.ypiresia_porwn import YpiresiaPorwn
+
+        id_senariou = (
+            self.synedria.get(KatastasiProsomoiwsis, 1).energo_senario or "arxiki_katastasi"
+        )
+        senario = self.synedria.get(EktelesiSenariou, id_senariou)
+        if not senario:
+            senario = EktelesiSenariou(
+                id_senariou=id_senariou,
+                onoma="Ιστορικό αποικίας",
+                perigrafi="Χρονική καταγραφή πόρων",
+                energo=True,
+            )
+            self.synedria.add(senario)
+            self.synedria.flush()
+        if senario:
+            self.synedria.add(
+                StigmiotypoSenariou(
+                    id_stigmiotypou="stigmiotypo_" + uuid.uuid4().hex,
+                    id_senariou=senario.id_senariou,
+                    titlos=titlos,
+                    dedomena_stigmiotypou={
+                        **self.stigmiotypo_senariou(),
+                        "poroi": {
+                            "energeia": YpiresiaPorwn(self.synedria).pare_katastasi_energeias(),
+                            "nero": YpiresiaPorwn(self.synedria).pare_katastasi_nerou(),
+                            "fortia_egkatastasewn": YpiresiaPorwn(
+                                self.synedria
+                            ).pare_analytika_fortia(),
+                            "logistiki": getattr(self, "logistiki_porwn", {}),
+                        },
+                    },
+                    xronos_stigmiotypou=xronos_apoikias(self.synedria),
+                )
+            )
+
+    def energopoiisi_kataigidas(self, xristis):
+        return self.efarmose_prokathorismeno_senario("kataigida_skonis_2026", xristis)
+
+    def efarmose_prokathorismeno_senario(self, kodikos, xristis):
+        """Εκπαιδευτικές αστοχίες και αποκαταστάσεις με ενιαία ενημέρωση τηλεμετρίας."""
+        epitrepta = {
+            "kataigida_skonis_2026",
+            "arxiki_katastasi",
+            "xamili_aktinovolia",
+            "diarroi_nerou",
+            "vlavi_aisthitira_oxygonou",
+            "apoleia_epikoinwnias",
+            "ypsili_aktinovolia",
+            "proskrousi",
+            "diarroi_atmosfairas",
+            "apokatastasi",
+        }
+        if kodikos not in epitrepta:
+            raise SfalmaKanona(KodikosSfalmatos.DEN_VRETHIKE, "Το σενάριο δεν βρέθηκε.", 404)
+        if xristis.vasikos_rolos != RolosXristi.SYNTONISTIS_APOIKIAS:
+            raise SfalmaKanona(
+                KodikosSfalmatos.ANARMODIOS_XRISTIS, "Απαιτείται συντονιστής αποικίας.", 403
+            )
+        kleidwse_synallagi(self.synedria)
+        roloi = self.synedria.get(KatastasiProsomoiwsis, 1)
+        roloi.xronos_prosomoiwsis += timedelta(microseconds=1)
+        roloi.ekdosi_katastasis += 1
+        xwros = self.synedria.get(XwrosKatoikisis, "xwros_01")
+        oxima = self.synedria.get(OximaExerevnis, "rover_01")
+        pv = self.synedria.get(Fwtovoltaiko, "pv_01")
+        if kodikos in {"arxiki_katastasi", "apokatastasi"}:
+            pv.aktinovolia_w_m2 = 300
+            pv.syntelestis_epikathisis_f = 0.8
+            xwros.thermokrasia_exwteriki_k = 213
+            xwros.rythmos_diarrois_piesis_pa_h = 0
+            xwros.piesi_pa = 101325
+            oxima.katastasi_epikoinwnias = "statheri"
+            for aisthitiras in self.synedria.scalars(select(Aisthitiras)):
+                aisthitiras.katastasi = "leitourgikos"
+            for dexameni in self.synedria.scalars(select(DexameniNerou)):
+                dexameni.rythmos_diarrois_l_h = 0
+            roloi.energo_senario = None
+        elif kodikos == "kataigida_skonis_2026":
+            pv.aktinovolia_w_m2 = 80
+            pv.syntelestis_epikathisis_f = 0.5
+            xwros.thermokrasia_exwteriki_k = 193
+            oxima.katastasi_epikoinwnias = "ypovathmismeni"
+            roloi.energo_senario = kodikos
+        elif kodikos == "xamili_aktinovolia":
+            pv.aktinovolia_w_m2 = 0
+        elif kodikos == "diarroi_nerou":
+            self.synedria.get(DexameniNerou, "dexameni_01").rythmos_diarrois_l_h = 100
+        elif kodikos == "diarroi_atmosfairas":
+            xwros.piesi_pa = 84000
+            xwros.rythmos_diarrois_piesis_pa_h = 1000
+        elif kodikos == "vlavi_aisthitira_oxygonou":
+            self.synedria.get(Aisthitiras, "aisth_o2").katastasi = "ektos_leitourgias"
+        elif kodikos == "apoleia_epikoinwnias":
+            oxima.katastasi_epikoinwnias = "apousia"
+        pv.isxys_paragwgis_w = ypologise_isxy_fwtovoltaikou(
+            pv.apodosi_eta, pv.epifaneia_m2, pv.aktinovolia_w_m2, pv.syntelestis_epikathisis_f
+        )
+        xwros.ekdosi_katastasis += 1
+        oxima.ekdosi_katastasis += 1
+        thermansi = ypologise_apaitisi_thermansis(
+            xwros.syntelestis_thermoperatotitas_u,
+            xwros.epifaneia_m2,
+            xwros.epithymiti_thermokrasia_k,
+            xwros.thermokrasia_exwteriki_k,
+        )
+        self.synedria.get(EnergeiakoFortio, "fortio_thermansis").isxys_kw = thermansi / 1000
+        self.synedria.get(
+            SyskeviYpostiriksisZwis, "sysk_thermansis"
+        ).katanalwsi_isxyos_w = thermansi
+        if kodikos in {
+            "kataigida_skonis_2026",
+            "arxiki_katastasi",
+            "apokatastasi",
+            "ypsili_aktinovolia",
+            "proskrousi",
+        }:
+            self.synedria.add(
+                ExwterikosKindynos(
+                    id_kindynou="kindynos_" + uuid.uuid4().hex,
+                    typos_kindynou="kataigida_skonis"
+                    if kodikos == "kataigida_skonis_2026"
+                    else kodikos,
+                    oratotita_m=100 if kodikos == "kataigida_skonis_2026" else 5000,
+                    epipedo_aktinovolias=0.5
+                    if kodikos == "ypsili_aktinovolia"
+                    else (0.25 if kodikos == "kataigida_skonis_2026" else 0.05),
+                    sovarotita="krisimi"
+                    if kodikos in {"kataigida_skonis_2026", "proskrousi"}
+                    else "xamili",
+                    eidos_dedomenwn="metrimeno",
+                    perigrafi="Ελεγχόμενο εκπαιδευτικό συμβάν: " + kodikos,
+                    xronos_katagrafis=xronos_apoikias(self.synedria),
+                )
+            )
+        senario = self.synedria.get(EktelesiSenariou, "kataigida_skonis_2026")
+        if not senario:
+            senario = EktelesiSenariou(
+                id_senariou="kataigida_skonis_2026",
+                onoma="Καταιγίδα σκόνης",
+                perigrafi="Ενιαίο εκπαιδευτικό σενάριο",
+                energo=False,
+            )
+            self.synedria.add(senario)
+        senario.energo = roloi.energo_senario == "kataigida_skonis_2026"
+        ananeose_metriseis(self.synedria, xronos_apoikias(self.synedria))
+        enimerwse_synagermous(self.synedria)
+        self.katagrafi_stigmiotypou("Εφαρμογή σεναρίου " + kodikos)
+        apantisi = {
+            "senario": kodikos,
+            "katastasi": "energi" if senario.energo else "efarmostike",
+            "paragwgi_pv_kw": pv.isxys_paragwgis_w / 1000,
+            "thermansi_kw": thermansi / 1000,
+            "oratotita_m": 100 if senario.energo else 5000,
+            "minyma": "Οι συνθήκες και οι μετρήσεις ενημερώθηκαν.",
+        }
+        kataxwrise_entoli(
+            self.synedria, xristis, "senaria", "efarmogi_senariou", kodikos, {}, apantisi
+        )
+        self.synedria.commit()
+        return apantisi
+
+    def ypovoli_apofasis_kataigidas(
+        self, epilogi, aitiologia, xristis, id_proepiskopisis=None, kleidi=None
+    ):
+        """Μία ατομική έγκριση με δεσμευμένες παραδοχές και διακριτές εντολές rover."""
+        if xristis.vasikos_rolos != RolosXristi.SYNTONISTIS_APOIKIAS:
+            raise SfalmaKanona(
+                KodikosSfalmatos.ANARMODIOS_XRISTIS, "Απαιτείται συντονιστής αποικίας.", 403
+            )
+        kleidwse_synallagi(self.synedria)
+        dedomena = {
+            "epilogi": epilogi,
+            "aitiologia": aitiologia,
+            "id_proepiskopisis": id_proepiskopisis,
+        }
+        epanalipsi = pare_epanalipsi(
+            self.synedria, xristis, "apofasi_kataigidas", "kataigida_skonis_2026", kleidi, dedomena
+        )
+        if epanalipsi is not None:
+            return epanalipsi
+        if epilogi not in {
+            "kamia_allagi",
+            "pausi_anavlhtwn",
+            "asfalis_stasi_oximatos",
+            "anaklisi_oximatos",
+            "syndyasmos_pliroys_asfaleias",
+        }:
+            raise SfalmaKanona(KodikosSfalmatos.AKYRI_TIMI, "Μη έγκυρη επιλογή.", 422)
+        prin = self.stigmiotypo_senariou()
+        pare_proepiskopisi(
+            self.synedria,
+            id_proepiskopisis,
+            "apofasi_kataigidas",
+            "kataigida_skonis_2026",
+            xristis,
+            prin,
+        )
+        katanalwse_proepiskopisi(self.synedria, id_proepiskopisis)
+        if self.synedria.get(KatastasiProsomoiwsis, 1).energo_senario != "kataigida_skonis_2026":
+            raise SfalmaKanona(
+                KodikosSfalmatos.MH_ASPHALIS_KATASTASI,
+                "Το σενάριο καταιγίδας δεν είναι ενεργό.",
+                409,
+            )
+        if epilogi in {"pausi_anavlhtwn", "syndyasmos_pliroys_asfaleias"}:
+            from backend.app.prosomoiwsi.prosomoiosis_porwn import efarmose_pausi_anavlitwn
+
+            efarmose_pausi_anavlitwn(self.synedria, True)
+        entoli_oximatos = None
+        if epilogi in {
+            "asfalis_stasi_oximatos",
+            "syndyasmos_pliroys_asfaleias",
+            "anaklisi_oximatos",
+        }:
+            from backend.app.ypiresies.ypiresia_apostolwn import YpiresiaApostolwn
+
+            ypiresia = YpiresiaApostolwn(self.synedria)
+            if epilogi == "anaklisi_oximatos":
+                proep = ypiresia.proepiskopisi_anaklisis("rover_01", xristis)
+                entoli_oximatos = ypiresia.ektelesi_anaklisis(
+                    "rover_01", xristis, proep["id_proepiskopisis"], desmefsi_synallagis=False
+                )
+            else:
+                proep = ypiresia.proepiskopisi_asfalous_stasis("rover_01", xristis)
+                entoli_oximatos = ypiresia.ektelesi_asfalous_stasis(
+                    "rover_01", xristis, proep["id_proepiskopisis"], desmefsi_synallagis=False
+                )
+        id_apofasis = "apofasi_" + uuid.uuid4().hex
+        self.synedria.add(
+            Apofasi(
+                id_apofasis=id_apofasis,
+                id_senariou="kataigida_skonis_2026",
+                id_syntonisti=xristis.id_xristi,
+                epilogi=epilogi,
+                aitiologia=aitiologia,
+                egkekrimeni=True,
+                katastasi_prin=prin,
+                katastasi_meta=self.stigmiotypo_senariou(),
+                xronos_apofasis=xronos_apoikias(self.synedria),
+            )
+        )
+        apantisi = {
+            "id_apofasis": id_apofasis,
+            "epilogi": epilogi,
+            "egkekrimeni": True,
+            "syntonistis": xristis.id_xristi,
+            "entoli_oximatos": entoli_oximatos,
+            "minyma": "Η απόφαση καταγράφηκε. Ελέγξτε χωριστά την παραλαβή εντολής rover και επανεκτιμήστε την κρίση.",
+        }
+        kataxwrise_entoli(
+            self.synedria,
+            xristis,
+            "senaria",
+            "apofasi_kataigidas",
+            "kataigida_skonis_2026",
+            dedomena,
+            apantisi,
+            id_proepiskopisis=id_proepiskopisis,
+            kleidi=kleidi,
+        )
+        self.katagrafi_stigmiotypou("Απόφαση συντονιστή")
+        enimerwse_synagermous(self.synedria)
+        self.synedria.commit()
+        return apantisi
+
+    def proxorise_xrono(self, lepta=15, xristis=None):
+        """Εκτελεί χρονικές εργασίες, ισοζύγια, κίνηση και τηλεμετρία σε διακριτά πεντάλεπτα."""
+        from backend.app.prosomoiwsi.prosomoiosi_zwis import proxorise_zwi
+        from backend.app.prosomoiwsi.prosomoiosis_apostolwn import proxorise_apostoles
+        from backend.app.prosomoiwsi.prosomoiosis_porwn import proxorise_porous
+
+        if not 0 < lepta <= 1440:
+            raise SfalmaKanona(
+                KodikosSfalmatos.AKYRI_TIMI, "Το βήμα πρέπει να είναι 1–1440 λεπτά.", 422
+            )
+        kleidwse_synallagi(self.synedria)
+        roloi = self.synedria.get(KatastasiProsomoiwsis, 1)
+        arxi = roloi.xronos_prosomoiwsis
+        telos = arxi + timedelta(minutes=lepta)
+        apotelesmata = []
+        apo = arxi
+        while apo < telos:
+            ews = min(telos, apo + timedelta(minutes=5))
+            poroi = proxorise_porous(self.synedria, apo, ews)
+            pososto = (
+                max(0, min(1, 1 - poroi["mi_kalyptomeni_energeia_kwh"] / poroi["katanalwsi_kwh"]))
+                if poroi["katanalwsi_kwh"] > 0
+                else 1
+            )
+            zwi = proxorise_zwi(self.synedria, apo, ews, pososto)
+            apostoles = proxorise_apostoles(self.synedria, apo, ews)
+            roloi.xronos_prosomoiwsis = ews
+            self.synedria.flush()
+            ananeose_metriseis(self.synedria, ews)
+            apotelesmata.append(
+                {
+                    "apo": apo.isoformat(),
+                    "ews": ews.isoformat(),
+                    "poroi": poroi,
+                    "ypostiriksi_zwis": zwi,
+                    "apostoles": apostoles,
+                }
+            )
+            apo = ews
+        roloi.simerino_vima += 1
+        roloi.ekdosi_katastasis += 1
+        enimerwse_synagermous(self.synedria)
+        self.logistiki_porwn = {
+            kleidi: sum(stoixeio_taf["poroi"].get(kleidi, 0) for stoixeio_taf in apotelesmata)
+            for kleidi in (
+                "ardefsi_l",
+                "anakyklwsi_eisodos_l",
+                "anakyklwsi_epistrofi_l",
+                "apwleia_anakyklwsis_l",
+                "yperxeilisi_l",
+                "diarros_l",
+                "elleimma_nerou_l",
+                "katanalwsi_kwh",
+                "paragwgi_kwh",
+                "mi_kalyptomeni_energeia_kwh",
+                "fortisi_oximatwn_kwh",
+                "perissevma_mi_apothikevmeno_kwh",
+            )
+        }
+        self.katagrafi_stigmiotypou("Επανέλεγχος μετά από προώθηση χρόνου")
+        apantisi = {
+            "simerino_vima": roloi.simerino_vima,
+            "neos_xronos": telos,
+            "lepta_pou_prostethikan": lepta,
+            "apotelesmata": apotelesmata,
+        }
+        if xristis:
+            kataxwrise_entoli(
+                self.synedria,
+                xristis,
+                "prosomoiwsi",
+                "proodos_xronou",
+                "apoikia",
+                {"lepta": lepta},
+                apantisi,
+            )
+        self.synedria.commit()
+        return apantisi
+
     # ========================================================================
     # SHARED-01: Συγκεντρωτική Σύνοψη Αποικίας (/synopsi)
     # ========================================================================
@@ -48,16 +629,32 @@ class YpiresiaSymvantwnKaiSenariwn:
         pvs = self.apothiki_porwn.pare_fwtovoltaika()
         syssoreftes = self.apothiki_porwn.pare_syssoreftes()
         fortia = self.apothiki_porwn.pare_energeiaka_fortia()
-        dexamenes = self.apothiki_porwn.pare_dexamenes_nerou()
+        dexamenes = [
+            stoixeio_delta
+            for stoixeio_delta in self.apothiki_porwn.pare_dexamenes_nerou()
+            if stoixeio_delta.typos_nerou == "katharo"
+        ]
         oximata = self.apothiki_apostolwn.pare_oximata()
-        synagermoi = self.apothiki_koinwn.pare_synagermous(katastasi="energos")
+        synagermoi = [
+            stoixeio_sigma
+            for stoixeio_sigma in self.apothiki_koinwn.pare_synagermous()
+            if stoixeio_sigma.katastasi != "epilymenos"
+        ]
 
         paragwgi_kw = sum(pv.isxys_paragwgis_w for pv in pvs) / 1000.0
-        krisima_kw = sum(f.isxys_kw for f in fortia if f.energo and f.einai_krisimo)
-        anavlita_kw = sum(f.isxys_kw for f in fortia if f.energo and f.einai_anavlito)
-        energeia_bat_kwh = sum(s.energeia_kwh for s in syssoreftes)
+        krisima_kw = sum(
+            stoixeio_zita.isxys_kw
+            for stoixeio_zita in fortia
+            if stoixeio_zita.energo and stoixeio_zita.einai_krisimo
+        )
+        anavlita_kw = sum(
+            stoixeio_zita.isxys_kw
+            for stoixeio_zita in fortia
+            if stoixeio_zita.energo and stoixeio_zita.einai_anavlito
+        )
+        energeia_bat_kwh = sum(stoixeio_sigma.energeia_kwh for stoixeio_sigma in syssoreftes)
 
-        _, elleimma_kw, _, auto_wres, katastasi_energeias = (
+        _, elleimma_kw, _, autonomia_wres, katastasi_energeias = (
             ypologise_ilektriko_isozygio_kai_autonomia(
                 paragwgi_kw=paragwgi_kw,
                 krisima_fortia_kw=krisima_kw,
@@ -68,12 +665,12 @@ class YpiresiaSymvantwnKaiSenariwn:
             )
         )
 
-        nero_trexwn_l = sum(d.trexwn_ogkos_l for d in dexamenes)
-        nero_efedreia_l = sum(d.efedreia_asfaleias_l for d in dexamenes)
+        nero_trexwn_l = sum(stoixeio_delta.trexwn_ogkos_l for stoixeio_delta in dexamenes)
+        nero_efedreia_l = sum(stoixeio_delta.efedreia_asfaleias_l for stoixeio_delta in dexamenes)
 
         return {
             "apoikia": "apoikia_olympus",
-            "xronos_synopsis": datetime.now(timezone.utc),
+            "xronos_synopsis": xronos_apoikias(self.synedria),
             "ypostiriksi_zwis": {
                 "plithysmos": sum(x.plithysmos for x in xwroi),
                 "thermokrasia_esw_k": xwroi[0].thermokrasia_eswteriki_k if xwroi else 293.0,
@@ -85,7 +682,7 @@ class YpiresiaSymvantwnKaiSenariwn:
                 "paragwgi_kw": round(paragwgi_kw, 3),
                 "fortia_kw": round(krisima_kw + anavlita_kw, 3),
                 "elleimma_kw": round(elleimma_kw, 3),
-                "autonomia_wres": round(auto_wres, 3) if auto_wres is not None else None,
+                "autonomia_wres": round(autonomia_wres, 3) if autonomia_wres is not None else None,
                 "katastasi": katastasi_energeias,
             },
             "nero": {
@@ -102,18 +699,14 @@ class YpiresiaSymvantwnKaiSenariwn:
             },
             "energoi_synagermoi": [
                 {
-                    "id": s.id_synagermou,
-                    "titlos": s.titlos,
-                    "sovarotita": s.sovarotita,
-                    "yposystima": s.yposystima,
+                    "id_synagermou": stoixeio_sigma.id_synagermou,
+                    "titlos": stoixeio_sigma.titlos,
+                    "sovarotita": stoixeio_sigma.sovarotita,
+                    "yposystima": stoixeio_sigma.yposystima,
                 }
-                for s in synagermoi
+                for stoixeio_sigma in synagermoi
             ],
         }
-
-    # ========================================================================
-    # SHARED-02, SHARED-08: Συναγερμοί — Αναγνώριση και Επίλυση
-    # ========================================================================
 
     def pare_synagermous(
         self, katastasi: Optional[str] = None, yposystima: Optional[str] = None
@@ -124,37 +717,41 @@ class YpiresiaSymvantwnKaiSenariwn:
         )
         return [
             {
-                "id_synagermou": s.id_synagermou,
-                "titlos": s.titlos,
-                "perigrafi": s.perigrafi,
-                "aitia": s.aitia,
-                "epiptwsi": s.epiptwsi,
-                "systasi": s.systasi,
-                "yposystima": s.yposystima,
-                "sovarotita": s.sovarotita,
-                "katastasi": s.katastasi,
-                "id_xristi_anagnwrisis": s.id_xristi_anagnwrisis,
-                "xronos_anagnwrisis": s.xronos_anagnwrisis,
-                "id_xristi_epilysis": s.id_xristi_epilysis,
-                "xronos_epilysis": s.xronos_epilysis,
-                "sxolio_epilysis": s.sxolio_epilysis,
-                "xronos_dimiourgias": s.xronos_dimiourgias,
+                "id_synagermou": stoixeio_sigma.id_synagermou,
+                "energi_aitia": stoixeio_sigma.energi_aitia,
+                "titlos": stoixeio_sigma.titlos,
+                "perigrafi": stoixeio_sigma.perigrafi,
+                "aitia": stoixeio_sigma.aitia,
+                "epiptwsi": stoixeio_sigma.epiptwsi,
+                "systasi": stoixeio_sigma.systasi,
+                "yposystima": stoixeio_sigma.yposystima,
+                "sovarotita": stoixeio_sigma.sovarotita,
+                "katastasi": stoixeio_sigma.katastasi,
+                "id_xristi_anagnwrisis": stoixeio_sigma.id_xristi_anagnwrisis,
+                "xronos_anagnwrisis": stoixeio_sigma.xronos_anagnwrisis,
+                "id_xristi_epilysis": stoixeio_sigma.id_xristi_epilysis,
+                "xronos_epilysis": stoixeio_sigma.xronos_epilysis,
+                "sxolio_epilysis": stoixeio_sigma.sxolio_epilysis,
+                "xronos_dimiourgias": stoixeio_sigma.xronos_dimiourgias,
             }
-            for s in synagermoi
+            for stoixeio_sigma in synagermoi
         ]
 
     def anagnwrisi_synagermou(self, id_synagermou: str, xristis: DedomenaXristi) -> Dict[str, Any]:
         """Αναγνώριση συναγερμού (γνώση, ΟΧΙ επίλυση - SHARED-02, SHARED-08)."""
+        kleidwse_synallagi(self.synedria)
+        enimerwse_synagermous(self.synedria)
         synagermos = self.apothiki_koinwn.pare_synagermo_ana_id(id_synagermou)
         if not synagermos:
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.DEN_VRETHIKE,
                 minyma=f"Ο συναγερμός '{id_synagermou}' δεν βρέθηκε.",
                 katastasi_http=404,
             )
 
+        self.elegxe_rolo_synagermou(synagermos, xristis)
         if synagermos.katastasi == "epilymenos":
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.MH_EPITREPTI_METAVASI,
                 minyma="Ο συναγερμός έχει ήδη επιλυθεί.",
                 katastasi_http=400,
@@ -184,19 +781,34 @@ class YpiresiaSymvantwnKaiSenariwn:
         }
 
     def epilysi_synagermou(
-        self, id_synagermou: str, xristis: DedomenaXristi, sxolio_epilysis: str
+        self,
+        id_synagermou: str,
+        xristis: DedomenaXristi,
+        sxolio_epilysis: str,
+        xeirokiniti_parakampsi: bool = False,
     ) -> Dict[str, Any]:
         """Οριστική επίλυση συναγερμού με έλεγχο και αιτιολόγηση (SHARED-08)."""
+        kleidwse_synallagi(self.synedria)
+        enimerwse_synagermous(self.synedria)
         synagermos = self.apothiki_koinwn.pare_synagermo_ana_id(id_synagermou)
         if not synagermos:
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.DEN_VRETHIKE,
                 minyma=f"Ο συναγερμός '{id_synagermou}' δεν βρέθηκε.",
                 katastasi_http=404,
             )
 
-        if not sxolio_epilysis.strip():
-            raise SfalmaDomain(
+        self.elegxe_rolo_synagermou(synagermos, xristis)
+        if synagermos.energi_aitia and not (
+            xeirokiniti_parakampsi and xristis.vasikos_rolos == RolosXristi.SYNTONISTIS_APOIKIAS
+        ):
+            raise SfalmaKanona(
+                KodikosSfalmatos.MH_ASPHALIS_KATASTASI,
+                "Η αιτία του συναγερμού παραμένει ενεργή. Απαιτείται αποκατάσταση ή ρητή παράκαμψη συντονιστή.",
+                409,
+            )
+        if len(sxolio_epilysis.strip()) < 5:
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.AKYRI_TIMI,
                 minyma="Απαιτείται τεκμηριωμένο σχόλιο επίλυσης για το κλείσιμο του συναγερμού.",
                 katastasi_http=400,
@@ -235,18 +847,18 @@ class YpiresiaSymvantwnKaiSenariwn:
         metavivaseis = self.apothiki_koinwn.pare_metavivaseis(mono_energes=mono_energes)
         return [
             {
-                "id_metavivasis": m.id_metavivasis,
-                "id_syntonisti": m.id_syntonisti,
-                "id_paralipti": m.id_paralipti,
-                "rolos": m.rolos,
-                "pedio_efarmogis": m.pedio_efarmogis,
-                "xronos_enarksis": m.xronos_enarksis,
-                "xronos_liksis": m.xronos_liksis,
-                "energo": m.energo,
-                "aitiologia": m.aitiologia,
-                "xronos_anaklisis": m.xronos_anaklisis,
+                "id_metavivasis": stoixeio_mi.id_metavivasis,
+                "id_syntonisti": stoixeio_mi.id_syntonisti,
+                "id_paralipti": stoixeio_mi.id_paralipti,
+                "rolos": stoixeio_mi.rolos,
+                "pedio_efarmogis": stoixeio_mi.pedio_efarmogis,
+                "xronos_enarksis": stoixeio_mi.xronos_enarksis,
+                "xronos_liksis": stoixeio_mi.xronos_liksis,
+                "energo": stoixeio_mi.energo,
+                "aitiologia": stoixeio_mi.aitiologia,
+                "xronos_anaklisis": stoixeio_mi.xronos_anaklisis,
             }
-            for m in metavivaseis
+            for stoixeio_mi in metavivaseis
         ]
 
     def dimiourgia_metavivasis(
@@ -260,14 +872,48 @@ class YpiresiaSymvantwnKaiSenariwn:
     ) -> Dict[str, Any]:
         """Μεταβίβαση ρόλου από συντονιστή σε άλλον χρήστη (μόνο συντονιστής - CORE-18)."""
         if xristis.vasikos_rolos != RolosXristi.SYNTONISTIS_APOIKIAS:
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.ANARMODIOS_XRISTIS,
                 minyma="Μόνο ο συντονιστής αποικίας μπορεί να εκχωρήσει μεταβίβαση δικαιωμάτων.",
                 katastasi_http=403,
             )
 
+        kleidwse_synallagi(self.synedria)
+        try:
+            RolosXristi(rolos)
+        except ValueError:
+            raise SfalmaKanona(KodikosSfalmatos.AKYRI_TIMI, "Ο ρόλος δεν αναγνωρίζεται.", 422)
+        if rolos == RolosXristi.SYNTONISTIS_APOIKIAS.value:
+            raise SfalmaKanona(
+                KodikosSfalmatos.ANARMODIOS_XRISTIS,
+                "Μεταβιβάζονται επιχειρησιακοί ρόλοι. Η εκχώρηση νέων δικαιωμάτων παραμένει στον βασικό συντονιστή.",
+                403,
+            )
+        from backend.app.montela import Xristis
+
+        paraliptis = self.synedria.get(Xristis, id_paralipti)
+        if not paraliptis or not paraliptis.energos:
+            raise SfalmaKanona(
+                KodikosSfalmatos.DEN_VRETHIKE, "Ο παραλήπτης δεν είναι ενεργός χρήστης.", 404
+            )
+        if pedio_efarmogis not in {"geniko", "ypostiriksi_zwis", "poroi", "apostoles"}:
+            from backend.app.montela import DexameniNerou, Thermokipio, ZwniThermokipiou
+
+            if not any(
+                self.synedria.get(montelo, pedio_efarmogis)
+                for montelo in [
+                    XwrosKatoikisis,
+                    OximaExerevnis,
+                    ZwniThermokipiou,
+                    Thermokipio,
+                    DexameniNerou,
+                ]
+            ):
+                raise SfalmaKanona(
+                    KodikosSfalmatos.DEN_VRETHIKE, "Το πεδίο μεταβίβασης δεν υπάρχει.", 404
+                )
         if diarkeia_wres <= 0.0 or diarkeia_wres > 72.0:
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.AKYRI_TIMI,
                 minyma="Η διάρκεια μεταβίβασης πρέπει να είναι από 0.1 έως 72 ώρες.",
                 katastasi_http=400,
@@ -313,15 +959,16 @@ class YpiresiaSymvantwnKaiSenariwn:
     def anaklisi_metavivasis(self, id_metavivasis: str, xristis: DedomenaXristi) -> Dict[str, Any]:
         """Ανάκληση ενεργού μεταβίβασης από συντονιστή (CORE-18)."""
         if xristis.vasikos_rolos != RolosXristi.SYNTONISTIS_APOIKIAS:
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.ANARMODIOS_XRISTIS,
                 minyma="Μόνο ο συντονιστής αποικίας μπορεί να ανακαλέσει μεταβίβαση δικαιωμάτων.",
                 katastasi_http=403,
             )
 
+        kleidwse_synallagi(self.synedria)
         metavivasi = self.apothiki_koinwn.pare_metavivasi_ana_id(id_metavivasis)
         if not metavivasi:
-            raise SfalmaDomain(
+            raise SfalmaKanona(
                 kodikos=KodikosSfalmatos.DEN_VRETHIKE,
                 minyma=f"Η μεταβίβαση '{id_metavivasis}' δεν βρέθηκε.",
                 katastasi_http=404,
@@ -346,330 +993,4 @@ class YpiresiaSymvantwnKaiSenariwn:
             "id_metavivasis": id_metavivasis,
             "energo": False,
             "minyma": "Η μεταβίβαση δικαιωμάτων ανακλήθηκε επιτυχώς.",
-        }
-
-    # ========================================================================
-    # STORM-01 έως STORM-10: Το Ακριβές Σενάριο Καταιγίδας Σκόνης (§6)
-    # ========================================================================
-
-    def proepiskopisi_senariou_kataigidas(self) -> Dict[str, Any]:
-        """Προεπισκόπηση και σύγκριση επιλογών για το σενάριο καταιγίδας σκόνης (STORM-05, §6).
-
-        Υπολογίζει ακριβώς τις τιμές του Golden Fixture (§6):
-        - PV baseline: 4.8 kW -> Storm: 0.8 kW
-        - Θέρμανση baseline: 8.0 kW -> Storm: 10.0 kW (+2 kW)
-        - Έλλειμμα baseline: 9.2 kW -> Αυτονομία: 3.26087 h
-        - Έλλειμμα storm (με αναβλητά): 15.2 kW -> Αυτονομία: 1.97368 h
-        - Έλλειμμα storm (χωρίς αναβλητά): 11.2 kW -> Αυτονομία: 2.67857 h (+42.29 min)
-        - Rover επιστροφή: 0.5 h, 0.3 kWh, ενεργειακά εφικτό αλλά ορατότητα 100 m < 300 m (κίνδυνος!)
-        """
-        # Υπολογισμοί baseline
-        isxys_pv_vasis_kw = ypologise_isxy_fwtovoltaikou(0.20, 100.0, 300.0, 0.8) / 1000.0
-        isxys_thermansis_vasis_kw = ypologise_apaitisi_thermansis(0.2, 500.0, 293.0, 213.0) / 1000.0
-        _, elleimma_vasis_kw, _, autonomia_vasis_wres, _ = (
-            ypologise_ilektriko_isozygio_kai_autonomia(
-                isxys_pv_vasis_kw,
-                isxys_thermansis_vasis_kw + 2.0,
-                4.0,
-                0.0,
-                30.0,
-                efedreia_idi_afairemeni=True,
-            )
-        )
-
-        # Υπολογισμοί καταιγίδας (πριν την απόφαση, με αναβλητά)
-        isxys_pv_kataigidas_kw = ypologise_isxy_fwtovoltaikou(0.20, 100.0, 80.0, 0.5) / 1000.0
-        isxys_thermansis_kataigidas_kw = (
-            ypologise_apaitisi_thermansis(0.2, 500.0, 293.0, 193.0) / 1000.0
-        )
-        _, elleimma_kataigidas_me_anavlita_kw, _, autonomia_kataigidas_me_anavlita_wres, _ = (
-            ypologise_ilektriko_isozygio_kai_autonomia(
-                isxys_pv_kataigidas_kw,
-                isxys_thermansis_kataigidas_kw + 2.0,
-                4.0,
-                0.0,
-                30.0,
-                efedreia_idi_afairemeni=True,
-            )
-        )
-
-        # Υπολογισμοί καταιγίδας (με παύση αναβλητών φορτίων)
-        _, elleimma_kataigidas_shed_kw, _, autonomia_kataigidas_shed_wres, _ = (
-            ypologise_ilektriko_isozygio_kai_autonomia(
-                isxys_pv_kataigidas_kw,
-                isxys_thermansis_kataigidas_kw + 2.0,
-                0.0,
-                0.0,
-                30.0,
-                efedreia_idi_afairemeni=True,
-            )
-        )
-
-        # Υπολογισμός rover
-        rover_axiologisi = ypologise_xrono_epistrofis_kai_asfaleia(
-            apostasi_km=2.0,
-            taxytita_kmh=4.0,
-            mesi_isxys_kw=0.6,
-            diathesimi_energeia_kwh=0.8,
-            efedreia_asfaleias_kwh=0.2,
-            oratotita_m=100.0,
-            katastasi_tilemetrias="ypovathmismeni",
-            katwfli_asfalous_oratotitas_m=300.0,
-        )
-
-        kerdos_wres = autonomia_kataigidas_shed_wres - autonomia_kataigidas_me_anavlita_wres
-
-        return {
-            "senario": "kataigida_skonis_2026",
-            "statistika_golden_fixture": {
-                "fwtovoltaika": {
-                    "baseline_kw": round(isxys_pv_vasis_kw, 2),
-                    "kataigida_kw": round(isxys_pv_kataigidas_kw, 2),
-                    "ptwsi_kw": round(isxys_pv_vasis_kw - isxys_pv_kataigidas_kw, 2),
-                },
-                "thermansi": {
-                    "baseline_kw": round(isxys_thermansis_vasis_kw, 2),
-                    "kataigida_kw": round(isxys_thermansis_kataigidas_kw, 2),
-                    "afksisi_kw": round(
-                        isxys_thermansis_kataigidas_kw - isxys_thermansis_vasis_kw, 2
-                    ),
-                },
-                "fortia_kai_autonomia": {
-                    "baseline": {
-                        "fortia_kw": round(isxys_thermansis_vasis_kw + 2.0 + 4.0, 2),
-                        "elleimma_kw": round(elleimma_vasis_kw, 2),
-                        "autonomia_wres": round(autonomia_vasis_wres, 5),
-                    },
-                    "kataigida_me_anavlita": {
-                        "fortia_kw": round(isxys_thermansis_kataigidas_kw + 2.0 + 4.0, 2),
-                        "elleimma_kw": round(elleimma_kataigidas_me_anavlita_kw, 2),
-                        "autonomia_wres": round(autonomia_kataigidas_me_anavlita_wres, 5),
-                    },
-                    "kataigida_me_pausi_anavlhtwn": {
-                        "fortia_kw": round(isxys_thermansis_kataigidas_kw + 2.0, 2),
-                        "elleimma_kw": round(elleimma_kataigidas_shed_kw, 2),
-                        "autonomia_wres": round(autonomia_kataigidas_shed_wres, 5),
-                        "kerdos_wres": round(kerdos_wres, 5),
-                        "kerdos_lepta": round(kerdos_wres * 60.0, 2),
-                    },
-                },
-                "rover": rover_axiologisi,
-            },
-            "epiloges_apofasis": [
-                {
-                    "kodikos": "kamia_allagi",
-                    "titlos": "Καμία ενέργεια (Διατήρηση όλων των φορτίων)",
-                    "synepies": "Εξάντληση μπαταριών σε ~1.97 ώρες. Υψηλός κίνδυνος κατάρρευσης αποικίας.",
-                    "asfaleia": "katastrofiki",
-                },
-                {
-                    "kodikos": "pausi_anavlhtwn",
-                    "titlos": "Παύση αναβλητών φορτίων (θερμοκήπιο / βοηθητικά)",
-                    "synepies": "Επέκταση αυτονομίας κατά ~42.29 λεπτά (από 1.97 h σε 2.68 h).",
-                    "asfaleia": "eparkis",
-                },
-                {
-                    "kodikos": "asfalis_stasi_rover",
-                    "titlos": "Εντολή ασφαλούς στάσης rover στη θέση του",
-                    "synepies": "Αποτροπή πρόσκρουσης λόγω ορατότητας 100 m. Διατήρηση ενέργειας.",
-                    "asfaleia": "ypsili",
-                },
-                {
-                    "kodikos": "syndyasmos_pliroys_asfaleias",
-                    "titlos": "Πλήρες πακέτο ασφαλείας: Παύση αναβλητών + Ασφαλής στάση rover",
-                    "synepies": "Βέλτιστη στρατηγική επιβίωσης κατά τη διάρκεια της καταιγίδας.",
-                    "asfaleia": "veltiwmeni",
-                },
-            ],
-            "apaiteitai_egkrisi_syntonisti": True,
-        }
-
-    def energopoiisi_kataigidas(self, xristis: DedomenaXristi) -> Dict[str, Any]:
-        """Ενεργοποίηση των παραμέτρων καταιγίδας στα περιβαλλοντικά assets (STORM-02, STORM-03)."""
-        # Ενημέρωση Φωτοβολταϊκού (G=80, f=0.5 -> 800 W = 0.8 kW)
-        pv = self.synedria.get(Fwtovoltaiko, "pv_01")
-        if pv:
-            pv.aktinovolia_w_m2 = 80.0
-            pv.syntelestis_epikathisis_f = 0.5
-            pv.isxys_paragwgis_w = 800.0
-
-        # Ενημέρωση Θαλάμου (T_exw = 193 K)
-        xwros = self.synedria.get(XwrosKatoikisis, "xwros_01")
-        if xwros:
-            xwros.thermokrasia_exwteriki_k = 193.0
-            xwros.ekdosi_katastasis += 1
-
-        # Ενημέρωση Θερμαντήρα και φορτίου (10,000 W = 10 kW)
-        sysk = self.synedria.get(SyskeviYpostiriksisZwis, "sysk_thermansis")
-        if sysk:
-            sysk.katanalwsi_isxyos_w = 10000.0
-
-        fortio_heat = self.synedria.get(EnergeiakoFortio, "fortio_thermansis")
-        if fortio_heat:
-            fortio_heat.isxys_kw = 10.0
-
-        # Ενημέρωση Rover και Εξωτερικού Κινδύνου (ορατότητα 100 m)
-        rover = self.synedria.get(OximaExerevnis, "rover_01")
-        if rover:
-            rover.katastasi_epikoinwnias = "ypovathmismeni"
-            rover.ekdosi_katastasis += 1
-
-        self.synedria.add(
-            ExwterikosKindynos(
-                id_kindynou=f"kindynos_storm_{uuid.uuid4().hex[:6]}",
-                typos_kindynou="kataigida_skonis",
-                oratotita_m=100.0,
-                epipedo_aktinovolias=0.25,
-                sovarotita="krisimi",
-                eidos_dedomenwn="metrimeno",
-                perigrafi="Σοβαρή καταιγίδα σκόνης: G=80 W/m², f=0.5, T_exw=193 K, ορατότητα 100 m.",
-                xronos_katagrafis=datetime.now(timezone.utc),
-            )
-        )
-
-        # Δημιουργία συναγερμού καταιγίδας
-        self.apothiki_koinwn.kataxwrise_synagermo(
-            id_synagermou=f"synag_storm_{uuid.uuid4().hex[:6]}",
-            titlos="Κρίσιμη Καταιγίδα Σκόνης σε εξέλιξη",
-            perigrafi="Κατακόρυφη πτώση ηλιακής ακτινοβολίας στα 80 W/m² και αύξηση αναγκών θέρμανσης στα 10 kW.",
-            aitia="Ατμοσφαιρικό μέτωπο σκόνης στον Άρη",
-            epiptwsi="Έλλειμμα 15.2 kW. Αυτονομία συσσωρευτή περιορισμένη σε μόλις 1.97 ώρες.",
-            systasi="Άμεση παύση αναβλητών φορτίων (curtailment) και εντολή ασφαλούς στάσης στο rover.",
-            yposystima="poroi",
-            sovarotita="krisimi",
-        )
-
-        # Καταγραφή στο Audit
-        self.apothiki_koinwn.kataxwrise_istoriko_elegxou(
-            id_xristi=xristis.id_xristi,
-            rolos=xristis.vasikos_rolos.value,
-            energeia="energopoiisi_senariou_kataigidas",
-            ontotita="ekteleseis_senariwn",
-            id_ontotitas="kataigida_skonis_2026",
-            palia_timi={"katastasi": "baseline"},
-            nea_timi={"katastasi": "kataigida_energi", "G": 80.0, "T_exw": 193.0},
-            aitiologia="Προσομοίωση επέλασης καταιγίδας σκόνης για έλεγχο διαδικασιών κρίσης",
-        )
-
-        self.synedria.commit()
-        return {
-            "senario": "kataigida_skonis_2026",
-            "katastasi": "energi",
-            "paragwgi_pv_kw": 0.8,
-            "thermansi_kw": 10.0,
-            "oratotita_m": 100.0,
-            "minyma": "Η καταιγίδα σκόνης ενεργοποιήθηκε. Όλοι οι δείκτες ενημερώθηκαν.",
-        }
-
-    def ypovoli_apofasis_kataigidas(
-        self,
-        epilogi: str,
-        aitiologia: str,
-        xristis: DedomenaXristi,
-    ) -> Dict[str, Any]:
-        """Έγκριση και εκτέλεση απόφασης αντιμετώπισης καταιγίδας από συντονιστή (STORM-06, STORM-08)."""
-        if xristis.vasikos_rolos != RolosXristi.SYNTONISTIS_APOIKIAS:
-            raise SfalmaDomain(
-                kodikos=KodikosSfalmatos.ANARMODIOS_XRISTIS,
-                minyma="Μόνο ο συντονιστής αποικίας έχει δικαίωμα έγκρισης κρίσιμης απόφασης καταιγίδας.",
-                katastasi_http=403,
-            )
-
-        if epilogi not in [
-            "kamia_allagi",
-            "pausi_anavlhtwn",
-            "asfalis_stasi_rover",
-            "syndyasmos_pliroys_asfaleias",
-        ]:
-            raise SfalmaDomain(
-                kodikos=KodikosSfalmatos.AKYRI_TIMI,
-                minyma=f"Μη έγκυρη επιλογή απόφασης: {epilogi}",
-                katastasi_http=400,
-            )
-
-        # Εκτέλεση ενεργειών βάσει απόφασης
-        if epilogi in ["pausi_anavlhtwn", "syndyasmos_pliroys_asfaleias"]:
-            fortia = self.apothiki_porwn.pare_energeiaka_fortia()
-            for f in fortia:
-                if f.einai_anavlito:
-                    f.energo = False
-
-        if epilogi in ["asfalis_stasi_rover", "syndyasmos_pliroys_asfaleias"]:
-            rover = self.synedria.get(OximaExerevnis, "rover_01")
-            if rover:
-                rover.katastasi_oximatos = "asfalis_stasi"
-                rover.mesi_isxys_kw = 0.1
-                rover.ekdosi_katastasis += 1
-
-        # Καταγραφή απόφασης
-        id_apofasis = f"apof_{uuid.uuid4().hex[:8]}"
-        twrinos_xronos = datetime.now(timezone.utc)
-
-        # Δημιουργία ή ανάκτηση εκτέλεσης σεναρίου
-        senario = self.synedria.get(EktelesiSenariou, "kataigida_skonis_2026")
-        if not senario:
-            senario = EktelesiSenariou(
-                id_senariou="kataigida_skonis_2026",
-                onoma="Καταιγίδα Σκόνης 2026",
-                perigrafi="Υποχρεωτικό σενάριο προσομοίωσης §6",
-                energo=True,
-            )
-            self.synedria.add(senario)
-            self.synedria.flush()
-
-        apofasi = Apofasi(
-            id_apofasis=id_apofasis,
-            id_senariou="kataigida_skonis_2026",
-            id_syntonisti=xristis.id_xristi,
-            epilogi=epilogi,
-            aitiologia=aitiologia,
-            egkekrimeni=True,
-            katastasi_prin={"anavlita_energa": True},
-            katastasi_meta={"epilogi_pou_efarmostike": epilogi},
-            xronos_apofasis=twrinos_xronos,
-        )
-        self.synedria.add(apofasi)
-
-        self.apothiki_koinwn.kataxwrise_istoriko_elegxou(
-            id_xristi=xristis.id_xristi,
-            rolos=xristis.vasikos_rolos.value,
-            energeia="egkrisi_apofasis_kataigidas",
-            ontotita="apofaseis",
-            id_ontotitas=id_apofasis,
-            palia_timi=None,
-            nea_timi={"epilogi": epilogi},
-            aitiologia=aitiologia,
-        )
-
-        self.synedria.commit()
-        return {
-            "id_apofasis": id_apofasis,
-            "epilogi": epilogi,
-            "egkekrimeni": True,
-            "syntonistis": xristis.id_xristi,
-            "minyma": "Η απόφαση του συντονιστή εκτελέστηκε και καταγράφηκε επιτυχώς.",
-        }
-
-    # ========================================================================
-    # CORE-13: Έλεγχος Ρολογιού Προσομοίωσης
-    # ========================================================================
-
-    def proxorise_xrono(self, lepta: int = 15) -> Dict[str, Any]:
-        """Προχωρά το προσομοιωμένο ρολόι κατά καθορισμένα λεπτά (CORE-13)."""
-        if lepta <= 0:
-            raise SfalmaDomain(
-                kodikos=KodikosSfalmatos.AKYRI_TIMI,
-                minyma="Τα λεπτά προώθησης πρέπει να είναι θετικός αριθμός.",
-                katastasi_http=400,
-            )
-
-        katastasi = self.apothiki_koinwn.pare_katastasi_prosomoiwsis()
-        katastasi.simerino_vima += 1
-        katastasi.xronos_prosomoiwsis = katastasi.xronos_prosomoiwsis + timedelta(minutes=lepta)
-
-        self.synedria.commit()
-        return {
-            "simerino_vima": katastasi.simerino_vima,
-            "neos_xronos": katastasi.xronos_prosomoiwsis,
-            "lepta_pou_prostethikan": lepta,
         }

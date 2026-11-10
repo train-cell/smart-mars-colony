@@ -1,4 +1,4 @@
-"""Alembic environment configuration for Smart Mars Colony."""
+"""Περιβάλλον μεταναστεύσεων του Smart Mars Colony."""
 
 from logging.config import fileConfig
 
@@ -8,24 +8,24 @@ from sqlalchemy import engine_from_config, pool
 from backend.app.montela import VasiMontelwn
 from backend.app.pyrinas.rythmiseis import rythmiseis
 
-config = context.config
+rythmisi = context.config
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+if rythmisi.config_file_name is not None:
+    fileConfig(rythmisi.config_file_name)
 
 # Ορισμός του metadata όλων των ORM μοντέλων
-target_metadata = VasiMontelwn.metadata
+metadedomena_stoxou = VasiMontelwn.metadata
 
 # Δυναμική ρύθμιση της διεύθυνσης βάσης από τις ρυθμίσεις της εφαρμογής
-config.set_main_option("sqlalchemy.url", rythmiseis.DIADROMI_VASIS)
+rythmisi.set_main_option("sqlalchemy.url", rythmiseis.DIADROMI_VASIS)
 
 
-def run_migrations_offline() -> None:
-    """Offline migrations."""
-    url = config.get_main_option("sqlalchemy.url")
+def ektelesi_xwris_syndesi() -> None:
+    """Παραγωγή SQL μεταναστεύσεων χωρίς εκτέλεση."""
+    dieythynsi = rythmisi.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
-        target_metadata=target_metadata,
+        url=dieythynsi,
+        target_metadata=metadedomena_stoxou,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=True,
@@ -35,29 +35,39 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    """Online migrations with SQLite batch mode enabled."""
-    configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = rythmiseis.DIADROMI_VASIS
+def ektelesi_me_syndesi() -> None:
+    """Εκτέλεση μεταναστεύσεων με έλεγχο ακεραιότητας SQLite."""
+    diamorfwsi = rythmisi.get_section(rythmisi.config_ini_section, {})
+    diamorfwsi["sqlalchemy.url"] = rythmiseis.DIADROMI_VASIS
 
-    connectable = engine_from_config(
-        configuration,
+    mixani = engine_from_config(
+        diamorfwsi,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    with connectable.connect() as connection:
+    with mixani.connect() as syndesi:
+        # Το batch SQLite αναδημιουργεί πίνακες με διατήρηση ξένων κλειδιών.
+        einai_sqlite = syndesi.dialect.name == "sqlite"
+        if einai_sqlite:
+            syndesi.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            syndesi.commit()
         context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
+            connection=syndesi,
+            target_metadata=metadedomena_stoxou,
             render_as_batch=True,
         )
 
         with context.begin_transaction():
             context.run_migrations()
+        if einai_sqlite:
+            paraviaseis = syndesi.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+            if paraviaseis:
+                raise RuntimeError("Η μετανάστευση εντόπισε παραβίαση ξένων κλειδιών.")
+            syndesi.exec_driver_sql("PRAGMA foreign_keys=ON")
 
 
 if context.is_offline_mode():
-    run_migrations_offline()
+    ektelesi_xwris_syndesi()
 else:
-    run_migrations_online()
+    ektelesi_me_syndesi()

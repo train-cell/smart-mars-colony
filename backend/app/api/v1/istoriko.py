@@ -1,27 +1,28 @@
 """Διαδρομή καταγραφής ιστορικού ελέγχου (Audit Log - CORE-10)."""
 
-from typing import Any, Dict, List
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.app.apothikes.apothiki_koinwn import ApothikiKoinwn
+from backend.app.sxhmata.apantiseis import IstorikoApantisi
 from backend.app.vasi.synthesi import pare_synedria_vasis
 
-router = APIRouter(tags=["Ιστορικό Ελέγχου"])
+dromologitis = APIRouter(tags=["Ιστορικό Ελέγχου"])
 
 
-@router.get("/istoriko-elegxou", summary="Ανάκτηση αμετάβλητου ιστορικού ελέγχου (Audit Trail)")
+@dromologitis.get(
+    "/istoriko-elegxou", summary="Ανάκτηση αμετάβλητου ιστορικού ελέγχου (Audit Trail)"
+)
 def pare_istoriko_elegxou(
     orio: int = Query(default=100, ge=1, le=500),
     synedria: Session = Depends(pare_synedria_vasis),
-) -> List[Dict[str, Any]]:
+) -> list[IstorikoApantisi]:
     """Επιστρέφει καταγεγραμμένες ενέργειες, χρήστες, ρόλους, παλιές/νέες τιμές και αιτιολογίες."""
     apothiki = ApothikiKoinwn(synedria)
     istoriko = apothiki.pare_istoriko_elegxou(orio=orio)
     return [
         {
-            "id": i.id_istorikou,
+            "id_istorikou": i.id_istorikou,
             "id_xristi": i.id_xristi,
             "rolos": i.rolos,
             "energeia": i.energeia,

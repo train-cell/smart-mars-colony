@@ -1,16 +1,31 @@
 """Καθαρές μαθηματικές συναρτήσεις φυσικών μοντέλων (PHY-01 έως PHY-07).
 
 Όλες οι συναρτήσεις είναι pure functions χωρίς εξαρτήσεις από βάση δεδομένων ή δίκτυο,
-πλήρως ελεγμένες με αυστηρούς ελέγχους ορίων και μονάδες SI.
+με ελέγχους ορίων, αριθμητικές δοκιμές και μονάδες SI.
 """
 
 import math
+from functools import wraps
 from typing import Any, Dict, Optional, Tuple
+
+
+def elegxos_peperasmenwn(synartisi):
+    """Απαγορεύει μη πεπερασμένες αριθμητικές εισόδους πριν από κάθε μοντέλο."""
+
+    @wraps(synartisi)
+    def elegxe(*orismata, **onomatismena):
+        for timi in (*orismata, *onomatismena.values()):
+            if isinstance(timi, (float, int)) and not math.isfinite(timi):
+                raise ValueError("Οι αριθμητικές τιμές πρέπει να είναι πεπερασμένες.")
+        return synartisi(*orismata, **onomatismena)
+
+    return elegxe
+
 
 # Φυσικές σταθερές
 STATHERA_AERIWN_J_MOL_K = 8.314462618  # Παγκόσμια σταθερά ιδανικών αερίων [J / (mol · K)]
 MORIAKI_MAZA_O2_KG_MOL = 0.0319988  # Μοριακή μάζα διατομικού οξυγόνου O2 [kg / mol]
-VARYTITA_ARI_M_S2 = 3.72076  # Επιτάχυνση βαρύτητας στην επιφάνεια του Άρη [m / s²]
+VARYTITA_ARI_M_S2 = 3.72076  # Εκπαιδευτική παράμετρος προσέγγισης βαρύτητας Άρη [m / s²]
 
 
 # ============================================================================
@@ -18,6 +33,7 @@ VARYTITA_ARI_M_S2 = 3.72076  # Επιτάχυνση βαρύτητας στην 
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_thermikes_apwleies(
     syntelestis_thermoperatotitas_w_m2k: float,
     epifaneia_m2: float,
@@ -35,10 +51,11 @@ def ypologise_thermikes_apwleies(
     if thermokrasia_eswteriki_k < 0.0 or thermokrasia_exwteriki_k < 0.0:
         raise ValueError("Η θερμοκρασία σε Kelvin δεν μπορεί να είναι αρνητική.")
 
-    delta_t = thermokrasia_eswteriki_k - thermokrasia_exwteriki_k
-    return syntelestis_thermoperatotitas_w_m2k * epifaneia_m2 * delta_t
+    diafora_thermokrasias = thermokrasia_eswteriki_k - thermokrasia_exwteriki_k
+    return syntelestis_thermoperatotitas_w_m2k * epifaneia_m2 * diafora_thermokrasias
 
 
+@elegxos_peperasmenwn
 def ypologise_apaitisi_thermansis(
     syntelestis_thermoperatotitas_w_m2k: float,
     epifaneia_m2: float,
@@ -68,6 +85,7 @@ def ypologise_apaitisi_thermansis(
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_isxy_fwtovoltaikou(
     apodosi_fwtovoltaikou: float,
     epifaneia_m2: float,
@@ -100,6 +118,7 @@ def ypologise_isxy_fwtovoltaikou(
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_meriki_piesi_oxygonou(
     pososto_oxygonou: float,
     synoliki_piesi_pa: float,
@@ -112,6 +131,7 @@ def ypologise_meriki_piesi_oxygonou(
     return pososto_oxygonou * synoliki_piesi_pa
 
 
+@elegxos_peperasmenwn
 def ypologise_apothema_kai_autonomia_oxygonou(
     ogkos_m3: float,
     thermokrasia_k: float,
@@ -124,7 +144,7 @@ def ypologise_apothema_kai_autonomia_oxygonou(
     """Υπολογίζει το αξιοποιήσιμο απόθεμα οξυγόνου και την αυτονομία κατοίκων.
 
     Επιστρέφει:
-    - moles_xrisimou_oxygonou [mol]
+    - mol_xrisimou_oxygonou [mol]
     - maza_xrisimou_oxygonou_kg [kg]
     - autonomia_wres [ώρες] (ή None αν η αναπλήρωση υπερκαλύπτει την κατανάλωση)
     - katastasi [str]: περιγραφή κατάστασης ασφαλείας
@@ -141,21 +161,21 @@ def ypologise_apothema_kai_autonomia_oxygonou(
         raise ValueError("Οι ρυθμοί κατανάλωσης/παραγωγής δεν μπορούν να είναι αρνητικοί.")
 
     # Χρήσιμη μερική πίεση πάνω από το εκπαιδευτικό κατώφλι ασφαλείας
-    deltap_xrisimo_pa = max(0.0, meriki_piesi_oxygonou_pa - katwfli_asfaleias_piesis_pa)
-    moles_xrisimou = (deltap_xrisimo_pa * ogkos_m3) / (STATHERA_AERIWN_J_MOL_K * thermokrasia_k)
-    maza_xrisimou_kg = moles_xrisimou * MORIAKI_MAZA_O2_KG_MOL
+    diafora_piesis_pa = max(0.0, meriki_piesi_oxygonou_pa - katwfli_asfaleias_piesis_pa)
+    mol_xrisimou = (diafora_piesis_pa * ogkos_m3) / (STATHERA_AERIWN_J_MOL_K * thermokrasia_k)
+    maza_xrisimou_kg = mol_xrisimou * MORIAKI_MAZA_O2_KG_MOL
 
     synoliki_katanalwsi_kg_h = arithmos_katoikwn * katanalwsi_ana_atomo_kg_h
     katharos_rythmos_meiwsis_kg_h = synoliki_katanalwsi_kg_h - rythmos_paragwgis_kg_h
 
-    if katharos_rythmos_meiwsis_kg_h <= 0.0:
-        return moles_xrisimou, maza_xrisimou_kg, None, "stathero_i_anaplirownomeno"
-
-    if maza_xrisimou_kg <= 0.0:
+    if meriki_piesi_oxygonou_pa <= katwfli_asfaleias_piesis_pa:
         return 0.0, 0.0, 0.0, "katwfli_paraviasmeno"
 
+    if katharos_rythmos_meiwsis_kg_h <= 0.0:
+        return mol_xrisimou, maza_xrisimou_kg, None, "stathero_i_anaplirownomeno"
+
     autonomia_wres = maza_xrisimou_kg / katharos_rythmos_meiwsis_kg_h
-    return moles_xrisimou, maza_xrisimou_kg, autonomia_wres, "kanoniki_leitourgia"
+    return mol_xrisimou, maza_xrisimou_kg, autonomia_wres, "kanoniki_leitourgia"
 
 
 # ============================================================================
@@ -163,6 +183,7 @@ def ypologise_apothema_kai_autonomia_oxygonou(
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_ilektriko_isozygio_kai_autonomia(
     paragwgi_kw: float,
     krisima_fortia_kw: float,
@@ -220,6 +241,7 @@ def ypologise_ilektriko_isozygio_kai_autonomia(
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_isozygio_nerou(
     trexwn_ogkos_l: float,
     xwritikotita_l: float,
@@ -243,6 +265,13 @@ def ypologise_isozygio_nerou(
         raise ValueError("Οι εισροές νερού δεν μπορούν να είναι αρνητικές.")
     if ardefsi_l < 0.0 or loipes_analwseis_l < 0.0 or diarros_l < 0.0:
         raise ValueError("Οι αναλώσεις και διαρροές δεν μπορούν να είναι αρνητικές.")
+
+    if (
+        efedreia_asfaleias_l < 0
+        or efedreia_asfaleias_l > xwritikotita_l
+        or trexwn_ogkos_l > xwritikotita_l
+    ):
+        raise ValueError("Το απόθεμα και η εφεδρεία πρέπει να ανήκουν στη χωρητικότητα.")
 
     synoliki_zitisi_l = ardefsi_l + loipes_analwseis_l + diarros_l
     diathesimo_prin_zitisi_l = trexwn_ogkos_l + ekswteriki_eisroi_l + epistrofi_anakyklwsis_l
@@ -272,6 +301,7 @@ def ypologise_isozygio_nerou(
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_energeia_kinisis_oximatos(
     maza_kg: float,
     apostasi_m: float,
@@ -292,6 +322,9 @@ def ypologise_energeia_kinisis_oximatos(
         raise ValueError("Η απόδοση κινητήρα πρέπει να βρίσκεται στο διάστημα (0, 1].")
     if syntelestis_kylisis < 0.0 or voithitiki_isxys_w < 0.0 or taxytita_m_s <= 0.0:
         raise ValueError("Μη έγκυρες παράμετροι τριβής, ισχύος ή ταχύτητας.")
+
+    if not (-math.pi / 2 < klisi_rad < math.pi / 2):
+        raise ValueError("Η κλίση πρέπει να βρίσκεται αυστηρά μεταξύ -π/2 και π/2 rad.")
 
     # Ανωφέρεια (η κατηφόρα sin(θ)<0 δεν θεωρείται ότι παράγει αυτόματη ανάκτηση)
     oros_anwforeias = max(0.0, math.sin(klisi_rad))
@@ -314,6 +347,7 @@ def ypologise_energeia_kinisis_oximatos(
 # ============================================================================
 
 
+@elegxos_peperasmenwn
 def ypologise_xrono_epistrofis_kai_asfaleia(
     apostasi_km: float,
     taxytita_kmh: float,
@@ -340,6 +374,9 @@ def ypologise_xrono_epistrofis_kai_asfaleia(
         raise ValueError("Η ταχύτητα πρέπει να είναι αυστηρά θετική.")
     if mesi_isxys_kw < 0.0 or diathesimi_energeia_kwh < 0.0 or efedreia_asfaleias_kwh < 0.0:
         raise ValueError("Οι ενεργειακές παράμετροι πρέπει να είναι μη αρνητικές.")
+
+    if oratotita_m < 0 or katwfli_asfalous_oratotitas_m < 0:
+        raise ValueError("Η ορατότητα πρέπει να είναι μη αρνητική.")
 
     xronos_epistrofis_wres = apostasi_km / taxytita_kmh
     apaitoumeni_energeia_kwh = mesi_isxys_kw * xronos_epistrofis_wres

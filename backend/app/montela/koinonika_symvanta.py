@@ -1,15 +1,16 @@
 """ORM μοντέλα για συναγερμούς, εντολές, σενάρια, αποφάσεις και audit trail."""
 
+import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.montela.vasi_montelwn import VasiMontelwn, XronosStigmaMixin
+from backend.app.montela.vasi_montelwn import VasiMontelwn, XronikaPedia, XronosUTC
 
 
-class Synagermos(VasiMontelwn, XronosStigmaMixin):
+class Synagermos(VasiMontelwn, XronikaPedia):
     """Συναγερμός ασφαλείας της αποικίας (SHARED-02, SHARED-03, SHARED-08)."""
 
     __tablename__ = "synagermoi"
@@ -30,18 +31,16 @@ class Synagermos(VasiMontelwn, XronosStigmaMixin):
 
     # Αναγνώριση vs Επίλυση (διαφορετικές ενέργειες και ρόλοι)
     id_xristi_anagnwrisis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    xronos_anagnwrisis: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    xronos_anagnwrisis: Mapped[Optional[datetime]] = mapped_column(XronosUTC(), nullable=True)
     id_xristi_epilysis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    xronos_epilysis: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    xronos_epilysis: Mapped[Optional[datetime]] = mapped_column(XronosUTC(), nullable=True)
     sxolio_epilysis: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     epanalamvanomenos: Mapped[bool] = mapped_column(Boolean, default=False)
+    kleidi_aitias: Mapped[Optional[str]] = mapped_column(String(150), nullable=True, index=True)
+    energi_aitia: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
 
-class Entoli(VasiMontelwn, XronosStigmaMixin):
+class Entoli(VasiMontelwn, XronikaPedia):
     """Εντολή ελέγχου αποικίας με πλήρη καταγραφή κύκλου ζωής (CORE-10, CORE-19)."""
 
     __tablename__ = "entoles"
@@ -58,12 +57,12 @@ class Entoli(VasiMontelwn, XronosStigmaMixin):
         String(100), unique=True, nullable=True
     )
     id_proepiskopisis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    id_ontotitas: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    apotypwma_aitimatos: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     anamenomeni_ekdosi: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     dedomena_aitimatos: Mapped[dict] = mapped_column(JSON, default=dict)
     apotelesma: Mapped[dict] = mapped_column(JSON, default=dict)
-    xronos_ektelesis: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    xronos_ektelesis: Mapped[Optional[datetime]] = mapped_column(XronosUTC(), nullable=True)
 
     symvanta: Mapped[list["SymvanEntolis"]] = relationship(
         "SymvanEntolis", back_populates="entoli", cascade="all, delete-orphan"
@@ -82,12 +81,12 @@ class SymvanEntolis(VasiMontelwn):
     proigoumeni_katastasi: Mapped[str] = mapped_column(String(50), nullable=False)
     nea_katastasi: Mapped[str] = mapped_column(String(50), nullable=False)
     minyma: Mapped[str] = mapped_column(String(255), nullable=False)
-    xronos_symvantos: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_symvantos: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
 
     entoli: Mapped["Entoli"] = relationship("Entoli", back_populates="symvanta")
 
 
-class EktelesiSenariou(VasiMontelwn, XronosStigmaMixin):
+class EktelesiSenariou(VasiMontelwn, XronikaPedia):
     """Εκτέλεση σεναρίου προσομοίωσης (π.χ. καταιγίδα σκόνης)."""
 
     __tablename__ = "ekteleseis_senariwn"
@@ -106,7 +105,7 @@ class EktelesiSenariou(VasiMontelwn, XronosStigmaMixin):
     )
 
 
-class StigmiotypoSenariou(VasiMontelwn, XronosStigmaMixin):
+class StigmiotypoSenariou(VasiMontelwn, XronikaPedia):
     """Στιγμιότυπο κατάστασης κατά την εξέλιξη σεναρίου."""
 
     __tablename__ = "stigmiotypa_senariwn"
@@ -116,15 +115,15 @@ class StigmiotypoSenariou(VasiMontelwn, XronosStigmaMixin):
         String(50), ForeignKey("ekteleseis_senariwn.id_senariou"), nullable=False
     )
     titlos: Mapped[str] = mapped_column(String(100), nullable=False)
-    dedomena_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
-    xronos_stigmiotypou: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    dedomena_stigmiotypou: Mapped[dict] = mapped_column(JSON, default=dict)
+    xronos_stigmiotypou: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
 
     senario: Mapped["EktelesiSenariou"] = relationship(
         "EktelesiSenariou", back_populates="stigmiotypa"
     )
 
 
-class Apofasi(VasiMontelwn, XronosStigmaMixin):
+class Apofasi(VasiMontelwn, XronikaPedia):
     """Απόφαση αντιμετώπισης συμβάντος ή σεναρίου (STORM-06, STORM-08)."""
 
     __tablename__ = "apofaseis"
@@ -141,7 +140,7 @@ class Apofasi(VasiMontelwn, XronosStigmaMixin):
     egkekrimeni: Mapped[bool] = mapped_column(Boolean, default=True)
     katastasi_prin: Mapped[dict] = mapped_column(JSON, default=dict)
     katastasi_meta: Mapped[dict] = mapped_column(JSON, default=dict)
-    xronos_apofasis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_apofasis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
 
     senario: Mapped["EktelesiSenariou"] = relationship(
         "EktelesiSenariou", back_populates="apofaseis"
@@ -163,17 +162,41 @@ class IstorikoElegxou(VasiMontelwn):
     nea_timi: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     aitiologia: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     id_aitimatos: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    xronos_katagrafis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_katagrafis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
 
 
-class KatastasiProsomoiwsis(VasiMontelwn, XronosStigmaMixin):
+class KatastasiProsomoiwsis(VasiMontelwn, XronikaPedia):
     """Κατάσταση του ελεγχόμενου προσομοιωμένου ρολογιού (CORE-13)."""
 
     __tablename__ = "katastasi_prosomoiwsis"
 
     id_katastasis: Mapped[int] = mapped_column(Integer, primary_key=True)
     simerino_vima: Mapped[int] = mapped_column(Integer, default=0)
-    xronos_prosomoiwsis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_prosomoiwsis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
     energo_senario: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    seed: Mapped[int] = mapped_column(Integer, default=42)
+    sporos: Mapped[int] = mapped_column(Integer, default=42)
     einai_se_pausi: Mapped[bool] = mapped_column(Boolean, default=False)
+    ekdosi_katastasis: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    epoxi_prosomoiwsis: Mapped[str] = mapped_column(
+        String(36), default=lambda: str(uuid.uuid4()), server_default="arxiki"
+    )
+    pausi_anavlitwn: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+
+
+class Proepiskopisi(VasiMontelwn):
+    """Μόνιμο στιγμιότυπο έγκρισης με ιδιοκτησία, λήξη και μοναδική κατανάλωση."""
+
+    __tablename__ = "proepiskopiseis"
+    id_proepiskopisis: Mapped[str] = mapped_column(String(50), primary_key=True)
+    id_xristi: Mapped[str] = mapped_column(
+        String(50), ForeignKey("xristes.id_xristi"), nullable=False
+    )
+    drasi: Mapped[str] = mapped_column(String(100), nullable=False)
+    id_ontotitas: Mapped[str] = mapped_column(String(100), nullable=False)
+    dedomena: Mapped[dict] = mapped_column(JSON, default=dict)
+    stigmiotypo: Mapped[dict] = mapped_column(JSON, default=dict)
+    katastasi: Mapped[str] = mapped_column(String(30), default="energi", server_default="energi")
+    epoxi_prosomoiwsis: Mapped[str] = mapped_column(String(36), nullable=False)
+    xronos_dimiourgias: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
+    xronos_liksis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
+    xronos_liksis_prosomoiwsis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)

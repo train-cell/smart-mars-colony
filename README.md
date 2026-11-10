@@ -1,117 +1,60 @@
-# Smart Mars Colony — Σύστημα Διαχείρισης Αποικίας στον Άρη (Backend)
+# Smart Mars Colony — Backend 1.1.0
 
-> [!TIP]
-> 🌟 **Κεντρική Παρουσίαση Έργου (Presentation & Academic Showcase):**
-> Για μια πλήρη, εξαντλητική διαδραστική παρουσίαση (slide-by-slide) ολόκληρου του backend για την αξιολόγηση και το frontend handoff, δείτε το:
-> **[`docs/backend/PAROUSIASI-BACKEND.md`](docs/backend/PAROUSIASI-BACKEND.md)**
+Εκπαιδευτικό Python/FastAPI/SQLite backend για τα τρία υποσυστήματα της εργασίας 2026–2027: υποστήριξη ζωής, πόροι/θερμοκήπια και αποστολές rover. Παρέχει μετρήσεις με προέλευση, φυσικές προβλέψεις, μόνιμες προεπισκοπήσεις, επιβεβαιωμένες εντολές, πραγματικό χρονικό προγραμματισμό, συναγερμούς και κοινό σενάριο καταιγίδας.
 
-Το παρόν αποθετήριο περιέχει την πλήρη υλοποίηση του backend για την εκπαιδευτική προσομοίωση **Smart Mars Colony** (ακαδημαϊκό έτος 2026–2027). Το σύστημα υλοποιεί όλες τις απαραίτητες υπηρεσίες παρακολούθησης συνθηκών, ελέγχου υποστήριξης ζωής, διαχείρισης πόρων (νερό, ενέργεια), ασφάλειας αποστολών οχήματος εξερεύνησης (rover) και συντονισμού αντιμετώπισης καταιγίδας σκόνης.
+## Εγκατάσταση και εκκίνηση
 
-> [!IMPORTANT]
-> **Αποκλειστικά Backend:** Το παρόν repository περιέχει μόνο backend κώδικα, API endpoints, βάση δεδομένων, φυσικά μοντέλα και δοκιμές. Δεν περιέχει κώδικα διεπαφής χρήστη (frontend UI). Το API contract παρέχεται αναλυτικά στο φάκελο `docs/koino/` για την ανεξάρτητη ανάπτυξη frontend.
-
----
-
-## Τεχνολογικό Stack
-
-- **Γλώσσα:** Python 3.12+
-- **Web Framework:** FastAPI (ασύγχρονο REST API με αυτόματο OpenAPI / Swagger)
-- **Μοντελοποίηση / Επικύρωση:** Pydantic v2
-- **Βάση Δεδομένων & ORM:** SQLite 3 & SQLAlchemy 2.0 (με υποστήριξη foreign keys, transactions & optimistic concurrency)
-- **Διαχείριση Σχήματος:** Alembic Migrations
-- **Έλεγχος Ποιότητας & Δοκιμές:** pytest, pytest-cov, httpx, Ruff
-- **Σύμβαση Ονοματοδοσίας:** Greeklish σε όλα τα εσωτερικά και δημόσια identifiers (συναρτήσεις, κλάσεις, πεδία, πίνακες, διαδρομές API)
-- **Γλώσσα Τεκμηρίωσης:** Ελληνικά
-
----
-
-## Γρήγορη Εκκίνηση
-
-### 1. Προετοιμασία Περιβάλλοντος
-
-```bash
-# Δημιουργία εικονικού περιβάλλοντος με Python 3.12
-uv venv --python python3.12 .venv
-source .venv/bin/activate
-
-# Εγκατάσταση εξαρτήσεων
-uv pip install -e ".[dev]"
+```sh
+uv sync --frozen --extra dev
+cp .env.example .env
+uv run --frozen alembic upgrade head
+uv run --frozen python -m scripts.arxika_dedomena
+uv run --frozen uvicorn backend.app.main:efarmogi --host 127.0.0.1 --port 8000
 ```
+Οι εντολές εκτελούνται από τη ρίζα του repository. Χρειάζεται Python ≥3.12. Το `uv.lock` κλειδώνει τις ακριβείς εκδόσεις· το `--frozen` αποτρέπει σιωπηλή ανανέωσή τους. Η εφαρμογή δεν κατασκευάζει πίνακες στην εκκίνηση: προηγείται υποχρεωτικά το Alembic. Η αρχικοποίηση δεδομένων είναι επαναλήψιμη και συμπληρώνει παλιά δεδομένα χωρίς διαγραφή. Το `--reset` διαγράφει τα δεδομένα της επιλεγμένης εκπαιδευτικής βάσης και προορίζεται μόνο για συνειδητή επαναφορά.
 
-### 2. Εκτέλεση Μεταναστεύσεων Βάσης Δεδομένων & Αρχικοποίηση Δεδομένων
 
-```bash
-# Εφαρμογή Alembic migrations
-alembic upgrade head
+Έλεγχος: `http://127.0.0.1:8000/api/v1/ygeia`. Διαδραστική τεκμηρίωση: `/docs`, εναλλακτική `/redoc`, πλήρες συμβόλαιο `/openapi.json` και αποθηκευμένο `docs/koino/openapi.json`. Το `/health` είναι τεκμηριωμένη συμβατική ανακατεύθυνση προς το Greeklish endpoint υγείας.
 
-# Φόρτωση αρχικών δεδομένων επίδειξης (seed)
-python scripts/arxika_dedomena.py
+## Ταυτότητα και βασική ροή
+
+Κάθε προστατευμένη πράξη χρειάζεται `X-Id-Xristi`: `xristis_zwis`, `xristis_porwn`, `xristis_apostolwn`, `syntonistis`. Άγνωστος/ανενεργός ή απών χρήστης →401. Η κεφαλίδα `X-Rolos` δεν εκχωρεί ρόλους. Ο συντονιστής εγκρίνει κοινές αποφάσεις και μεταβιβάζει προσωρινά επιχειρησιακούς ρόλους με πεδίο και λήξη.
+
+Ανάγνωση → προεπισκόπηση → ρητή επιβεβαίωση → ανάκτηση εντολής → βήμα χρόνου/έλεγχος αποτελέσματος. Το preview διατηρείται στη βάση 15min πραγματικού και προσομοιωμένου χρόνου, δεσμεύεται σε χρήστη/στόχο/στιγμιότυπο και καταναλώνεται μία φορά. Άλλαξαν οι είσοδοι;409 και νέα προεπισκόπηση. Επανάληψη με ίδιο `Idempotency-Key` και ίδιο αίτημα επιστρέφει ακριβώς την πρώτη απόκριση.
+
+## Έλεγχοι
+
+```sh
+uv run --frozen pytest -q
+uv run --frozen pytest --cov=backend/app --cov-branch --cov-report=term-missing
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen python -m scripts.elegxos_onomatodosias
+uv run --frozen alembic check
 ```
+Το `alembic check` ελέγχει την επιλεγμένη, ήδη αναβαθμισμένη βάση. Τα tests χρησιμοποιούν ιδιωτικές βάσεις μνήμης ή προσωρινά αρχεία και αντικαθιστούν και τη συνεδρία του lifespan. Δεν χρειάζονται υπάρχον προσωπικό αρχείο SQLite.
 
-### 3. Εκκίνηση Εξυπηρετητή (Development Server)
 
-```bash
-uvicorn backend.app.main:efarmogi --reload --port 8000
-```
+Η έκδοση αναπτύχθηκε με ανεξάρτητα αριθμητικά παραδείγματα και δοκιμές φυσικής εκτέλεσης. Τα ακριβή αποτελέσματα και η κάλυψη βρίσκονται στο [09-dokimes.md](docs/backend/09-dokimes.md). Η αναφορά του αρχικού audit είναι ιστορική· η κατάσταση της νέας έκδοσης τεκμηριώνεται στο [15-teliki-anafora.md](docs/backend/15-teliki-anafora.md).
 
-- **Διαδραστική Τεκμηρίωση Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **OpenAPI Schema (JSON):** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
-- **Έλεγχος Υγείας Συστήματος:** [http://localhost:8000/api/v1/ygeia](http://localhost:8000/api/v1/ygeia)
-
-### 4. Εκτέλεση Δοκιμών (Test Suite)
-
-```bash
-# Εκτέλεση όλων των ελέγχων
-pytest
-
-# Έλεγχος κάλυψης κώδικα (coverage)
-pytest --cov=backend/app --cov-report=term-missing
-```
-
----
-
-## Αρχιτεκτονική Δομή Αποθετηρίου
+## Δομή και παράδοση
 
 ```text
-smart-mars-colony/
-├── README.md                         # Κύρια τεκμηρίωση έργου (Ελληνικά)
-├── CHANGELOG.md                      # Ιστορικό αλλαγών (Ελληνικά)
-├── pyproject.toml                    # Ρυθμίσεις πακέτου και εξαρτήσεων
-├── alembic.ini                       # Ρυθμίσεις Alembic migrations
-├── migrations/                       # Ιστορικό μεταναστεύσεων βάσης
-├── backend/
-│   ├── app/
-│   │   ├── main.py                   # Κεντρικό σημείο εισόδου FastAPI
-│   │   ├── pyrinas/                  # Ρυθμίσεις, αυθεντικοποίηση, RBAC, σφάλματα, μονάδες
-│   │   ├── api/v1/                   # REST Routers ανά υποσύστημα
-│   │   ├── vasi/                     # Σύνδεση SQLite, συνεδρίες, Base ORM
-│   │   ├── montela/                  # Πίνακες ORM (SQLAlchemy)
-│   │   ├── sxhmata/                  # Pydantic DTOs & Schemas
-│   │   ├── apothikes/                # Πρόσβαση δεδομένων (Repositories)
-│   │   ├── ypiresies/                # Επιχειρησιακή λογική & ροές εντολών
-│   │   ├── fysika_montela/           # Καθαρές μαθηματικές συναρτήσεις φυσικής
-│   │   ├── prosomoiwsi/              # Ρολόι, καταστάσεις & σενάρια προσομοίωσης
-│   │   ├── symvanta/                 # Διαχείριση γεγονότων & επανυπολογισμοί
-│   │   └── arxika_dedomena/          # Δεδομένα επίδειξης (Seed fixtures)
-│   └── tests/                        # Αυτοματοποιημένες δοκιμές (pytest)
-│       ├── monades/                  # Δοκιμές μονάδας (φυσικά μοντέλα, συναρτήσεις)
-│       ├── enopoiisi/                # Δοκιμές ενοποίησης υπηρεσιών και βάσης
-│       ├── symvolaia/                # Δοκιμές συμβολαίων API και OpenAPI
-│       └── senaria/                  # Δοκιμές ολοκληρωμένων σεναρίων (π.χ. καταιγίδα)
-├── docs/
-│   ├── backend/                      # Πλήρης ελληνική τεχνική τεκμηρίωση (00-17)
-│   ├── koino/                        # Συμβόλαια διασύνδεσης προς τη φοιτήτρια frontend
-│   └── eswterika/                    # Εσωτερικές αναφορές παράδοσης υποπρακτόρων
-└── scripts/                          # Βοηθητικά σενάρια εκτέλεσης και αρχικοποίησης
+backend/app/api/v1/         δημόσια HTTP συμβόλαια
+backend/app/ypiresies/      κανόνες και ατομικές εντολές
+backend/app/prosomoiwsi/    χρόνος, νερό/ενέργεια, ζωή, κίνηση
+backend/app/fysika_montela/ καθαρές μαθηματικές συναρτήσεις
+backend/app/montela/        μοντέλα SQLAlchemy
+backend/app/apothikes/      ερωτήματα βάσης
+backend/tests/             μονάδες, ενοποίηση, σενάρια, συμβόλαια
+migrations/                αρχικό σχήμα + ασφαλής αναβάθμιση
+scripts/                   αρχικοποίηση, έλεγχοι και εξαγωγή
+ docs/backend/             ελληνική τεχνική τεκμηρίωση
+ docs/koino/               σύμβαση και ροές προς τη διεπαφή
 ```
 
----
+Υπάρχουσα βάση: κρατήστε αντίγραφο SQLite πριν την αναβάθμιση, εκτελέστε `alembic upgrade head` και την επαναλήψιμη αρχικοποίηση, **χωρίς reset**. Η νέα μετανάστευση διορθώνει το παλιό `active_scenario`, προσθέτει τα νέα πεδία και συμφωνεί τις παλιές δεσμεύσεις άρδευσης. Διαδικασία/ανάκτηση: [03-vasi-dedomenwn.md](docs/backend/03-vasi-dedomenwn.md).
 
-## Τεκμηρίωση & Συμβόλαιο Frontend
+Η υλοποίηση είναι τοπική εκπαιδευτική προσομοίωση. Η επιλογή `X-Id-Xristi` δηλώνει λογαριασμό επίδειξης χωρίς κωδικό ή κρυπτογραφικό αποδεικτικό ταυτότητας. Οι αναγνώσεις είναι δημόσιες στην τοπική εγκατάσταση. Δεν παρέχεται δικτυακή αυθεντικοποίηση για δημόσια διάθεση. Η SQLite σειριοποιεί τις εγγραφές· οι χρόνοι προσομοίωσης εξελίσσονται μόνο με ρητή εντολή βήματος. Δεν υπάρχει πραγματική συσκευή, ραδιοζεύξη ή εξωτερική τηλεμετρία.
 
-- **🌟 Κεντρική Παρουσίαση Backend (Showcase Hub):** [`docs/backend/PAROUSIASI-BACKEND.md`](docs/backend/PAROUSIASI-BACKEND.md)
-- **Πλήρης Τεχνική Τεκμηρίωση Backend:** [`docs/backend/`](docs/backend/)
-- **Συμβόλαιο Διεπαφής Frontend-Backend:** [`docs/koino/symvolaio-frontend-backend.md`](docs/koino/symvolaio-frontend-backend.md)
-- **Ροές Επίδειξης (Θερμοκρασία, Άρδευση, Καταιγίδα):** [`docs/koino/roes-epideiksis.md`](docs/koino/roes-epideiksis.md)
-- **Αντιστοίχιση HTA / Norman με API Endpoints:** [`docs/koino/antistoixisi-hta-norman-api.md`](docs/koino/antistoixisi-hta-norman-api.md)
-- **Κανόνες Ονοματοδοσίας Greeklish:** [`docs/backend/17-kanones-onomatodosias.md`](docs/backend/17-kanones-onomatodosias.md)
+Τα φυσικά μοντέλα έχουν δηλωμένες εκπαιδευτικές παραδοχές. Τα τελικά διαγράμματα HTA/Norman, οι οθόνες, τα πραγματικά screenshots, οι δοκιμές με χρήστες, τα ονόματα ομάδας και η ομαδική υποβολή `ergasia1.zip` παραμένουν ευθύνη της ομάδας. Η ολοκλήρωση του backend δεν πιστοποιεί την ολοκλήρωση αυτών των παραδοτέων.

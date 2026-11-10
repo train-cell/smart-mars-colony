@@ -16,7 +16,7 @@ class EidosMetrisis(str, Enum):
     METRIMENO = "metrimeno"
     EKTIMIMENO = "ektimimeno"
     PROVLEPSI = "provlepsi"
-    SETPOINT = "setpoint"
+    EPITHYMITI_RYTHMISI = "epithymiti_rythmisi"
 
 
 class PoiotitaMetrisis(str, Enum):
@@ -41,6 +41,9 @@ class TasiMetrisis(str, Enum):
 class KatastasiEntolis(str, Enum):
     """Κατάσταση κύκλου ζωής εντολής."""
 
+    PROGRAMMATISMENO = "programmatismeno"
+    SE_ANAMONI = "se_anamoni"
+    ANASTOLI = "anastoli"
     PROTATHIKE = "protathike"
     PROEPISKOPITHIKE = "proepiskopithike"
     EPIVEVAIWTHIKE = "epivevaiwthike"

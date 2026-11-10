@@ -1,182 +1,51 @@
-# Συμβόλαιο Επικοινωνίας Frontend - Backend
+# Σύμβαση backend–διεπαφής · έκδοση 1.1.0
 
-Το παρόν έγγραφο ορίζει το επίσημο τεχνικό συμβόλαιο διεπαφής μεταξύ του Frontend Dashboard και του Backend API του **Smart Mars Colony**. Έχει γραφτεί αναλυτικά με διαγράμματα και επεξηγήσεις ώστε να καθοδηγήσει πλήρως τη συνάδελφο του Frontend στην υλοποίηση του UI.
+Βάση URL:`http://127.0.0.1:8000/api/v1`. Πλήρης μηχανικά αναγνώσιμη αναφορά:`openapi.json` στον ίδιο φάκελο και `/openapi.json` στον server. Όλες οι δημόσιες επιτυχίες έχουν ρητό DTO και τα τεκμηριωμένα σφάλματα χρησιμοποιούν ενιαίο φάκελο. Το `04-api.md` περιέχει κατάλογο μεθόδων/διαδρομών που εξάγεται από το πραγματικό OpenAPI.
 
----
+## Αυθεντικοποίηση και χρόνος
 
-## 1. Βασικές Αρχές Διεπαφής & Αρχιτεκτονική Επικοινωνίας
+Επιλέξτε χρήστη με `POST /taftopoiisi/eisodos {"id_xristi":"xristis_zwis"}` και στέλνετε `X-Id-Xristi` στις προστατευμένες πράξεις. Δεν πρόκειται για token ασφαλείας· είναι τοπικός λογαριασμός επίδειξης. Οι ρόλοι ανακτώνται από τη βάση και τις μη ληγμένες/ανακλημένες μεταβιβάσεις. Το `X-Rolos` είναι προαιρετικός έλεγχος επιλεγμένου ρόλου.
 
-```mermaid
-flowchart LR
-    subgraph Frontend["Frontend Dashboard (UI)"]
-        UI_Widgets["Οθόνες & Widgets"]
-        UI_Modals["Διάλογοι Επιβεβαίωσης"]
-        UI_Store["Client State (Zustand/Redux)"]
-    end
+Οι χρόνοι επιστρέφονται ISO8601 UTC με `Z` ή ισοδύναμο `+00:00`. Η ώρα εκτέλεσης προγραμμάτων αφορά το εικονικό ρολόι. Τα previews έχουν λήξη πραγματικού **και** εικονικού χρόνου. Όποιο όριο περάσει πρώτο ακυρώνει την πρόταση. Προαιρετικό `Idempotency-Key` έως 100 χαρακτήρες επιτρέπει ακριβή επανάληψη αποτελέσματος για τον ίδιο χρήστη/ενέργεια/στόχο/σώμα. Διαφορετικό σώμα με ίδιο κλειδί →409. `X-Id-Aitimatos` συσχετίζει απόκριση, σφάλμα και ιστορικό· δεν εκτελεί idempotency.
 
-    subgraph HTTP["HTTP / REST Interface (Greeklish)"]
-        Headers["Headers: X-ID-Xristi, X-Rolos, Idempotency-Key"]
-        Endpoints["Base URL: /api/v1/..."]
-    end
+## Προεπισκόπηση, επιβεβαίωση, επαλήθευση
 
-    subgraph Backend["Smart Mars Colony Backend"]
-        FastAPI["FastAPI Routing & Auth Guard"]
-        Services["Domain Services (ECLSS, Poroi, Rover)"]
-        Physics["Αμιγή Φυσικά Μοντέλα (PHY-01..07)"]
-        DB[("SQLite 3 Database")]
-    end
+Η διεπαφή κρατά το `id_proepiskopisis`, εμφανίζει συνέπειες/παραδοχές και ζητά ρητή επιβεβαίωση. Preview δεν αφαιρεί νερό/ενέργεια ούτε αλλάζει στόχο ή κίνηση· αποθηκεύει μόνο την πρόταση. Ακύρωση στη φόρμα σημαίνει ότι δεν στέλνεται confirm. Η πρόταση λήγει από μόνη της. Δεν επιτρέπεται αντικατάσταση έκδοσης ώστε ένα παλιό preview να εμφανιστεί νέο.
 
-    UI_Widgets -->|1. GET /synopsi, /aisthitires| Endpoints
-    UI_Modals -->|2. POST /proepiskopisi| Endpoints
-    UI_Modals -->|3. POST /epivevaiwsi + Idempotency-Key| Endpoints
-    Endpoints --> Headers
-    Headers --> FastAPI
-    FastAPI --> Services
-    Services --> Physics
-    Services --> DB
-```
+Θερμοκρασία: preview `{"epithymiti_thermokrasia_k":295,"anamenomeni_ekdosi_katastasis":1}`, confirm `{"id_proepiskopisis":"...","anamenomeni_ekdosi_katastasis":1}`. Η εντολή επιβεβαιώνει εφαρμογή στόχου· η μετρούμενη θερμοκρασία αλλάζει σε επόμενα βήματα.
 
-- **Πρωτόκολλο:** HTTP/1.1 μέσω REST & JSON.
-- **Κοινή Ρίζα Endpoints:** `/api/v1`
-- **Κανόνας Greeklish (§0A):** Όλα τα JSON κλειδιά, παράμετροι διαδρομών (path parameters) και τιμές enums ακολουθούν αυστηρά λατινική μεταγραφή ελληνικών λέξεων (ASCII).
-- **Μονάδες Μέτρησης:**
-  - Θερμοκρασία: Kelvin ($K$) ως εσωτερική τιμή, με υποστήριξη βαθμών Κελσίου ($^\circ C$) στις αποκρίσεις.
-  - Ενέργεια / Ισχύς: $kW$ για ισχύ, $kWh$ για αποθηκευμένη ενέργεια.
-  - Όγκος: Λίτρα ($L$) ή κυβικά μέτρα ($m^3$).
-  - Πίεση: Pascals ($Pa$) ή $kPa$.
+Άρδευση: preview `{"id_zwnis":"zwni_01","posotita_nerou_l":100,"diarkeia_lepta":30,"xronos_enarksis":"2026-11-10T12:30:00Z"}`. Confirm `{"id_proepiskopisis":"..."}`. Η ποσότητα δεσμεύεται λογικά και καταναλώνεται κατά την εκτέλεση. Τα πεδία `desmevmeno_l` και `trexwn_ogkos_l` έχουν διαφορετικό νόημα. Ίδια μορφή confirm για φωτισμό/ανακύκλωση/περιορισμό φορτίων/αποστολή/ανάκληση/στάση. Η ανακύκλωση επιβεβαιώνεται στο `POST /nero/anakyklwsi/programmata`· το παλιό `/entoles` είναι ισοδύναμη διαδρομή με το νέο σώμα.
 
----
+Καταιγίδα: η ενεργοποίηση είναι εργαλείο ανάπτυξης. Μετά την ενεργοποίηση χρειάζεται **νέο** preview. Confirm `{"id_proepiskopisis":"...","epilogi":"pausi_anavlhtwn","aitiologia":"Προστασία κρίσιμων φορτίων"}`. Επιλογές:`kamia_allagi`, `pausi_anavlhtwn`, `anaklisi_oximatos`, `asfalis_stasi_oximatos`, `syndyasmos_pliroys_asfaleias`. Μετά ελέγξτε τη σύνθετη απόφαση και την ξεχωριστή `entoli_oximatos`· μην εμφανίσετε συνολική «ασφάλεια» μόνο επειδή εγκρίθηκε η απόφαση.
 
-## 2. Επικεφαλίδες Αιτημάτων (Request Headers)
+## Αποκρίσεις και μονάδες
 
-| Επικεφαλίδα | Υποχρεωτική | Περιγραφή | Παράδειγμα |
-| :--- | :---: | :--- | :--- |
-| `Content-Type` | Ναι (στα POST) | Μορφή σώματος αιτήματος | `application/json` |
-| `X-ID-Xristi` | Ναι (στα προστατευμένα) | Αναγνωριστικό συνδεδεμένου χρήστη | `xristis_01` |
-| `X-Rolos` | Ναι (στα προστατευμένα) | Ενεργός ρόλος για το αίτημα | `ypefthynos_ypostiriksis_zwis` |
-| `Idempotency-Key` | Προαιρετική (Συνιστάται στα Confirm) | Μοναδικό UUID κλειδί αποτροπής διπλής εκτέλεσης | `c2a688b1-36f1-4db8-bcae-ec15e0e01234` |
+Ατμόσφαιρα: συνολική και μερική πίεση Pa, κλάσματα O₂/CO₂0…1. Θερμοκρασίες K· η μετατροπή °C μπορεί να γίνει στην παρουσίαση. Ενέργεια kWh, ισχύς kW/W, νερό L, συντεταγμένες m, αποστάσεις km όπου το λέει η κατάληξη. `autonomia_wres:null` σημαίνει μη προβλεπόμενη εξάντληση με τις δηλωμένες συνθήκες, όχι αποτυχία JSON. `0` σημαίνει μηδενική διαθέσιμη αυτονομία και δεν υποκαθίσταται με προηγούμενη τιμή.
 
----
+Μετρήσεις: χρησιμοποιήστε και ποιότητα, χρόνο, πηγή, τάση, αβεβαιότητα. Μην εμφανίζετε `apousia/palio` ως έγκυρη νέα μέτρηση. Προβλέψεις έχουν `eidos:provlepsi` ή σαφή πεδία παραδοχών· οι απλές καταστάσεις asset είναι το φυσικό μοντέλο, όχι ανεξάρτητος πραγματικός αισθητήρας.
 
-## 3. Κύκλος Ζωής Εντολών Δύο Βημάτων (Preview / Confirm / Cancel Pattern)
+Προγράμματα:`programmatismeno`, `se_exelixi`, `anastoli`, `oloklirothike`, `apetyxe`, `akyrothike`. Rover:`se_anamoni`, `egkrithike`, `se_exelixi`, `avevaio`, `oloklirothike`, `apetyxe`. Διαβάστε `/entoles/{id_entolis}` για αλληλουχία συμβάντων. Το HTTP200 προγραμματισμού δεν σημαίνει ότι εκτελέστηκε. Η γενική ακύρωση δεν αναιρεί ολοκληρωμένη πράξη και δεν ισχυρίζεται ανάκληση εντολής rover που μπορεί να έχει παραδοθεί. Χρησιμοποιείται αναβολή πριν την έναρξη ή νέα ασφαλής εντολή ανάκαμψης.
 
-Για λόγους ασφάλειας στον Άρη, καμία κρίσιμη ενέργεια (αλλαγή θερμοκρασίας, άρδευση, διακοπή φορτίου, κίνηση rover) δεν εκτελείται άμεσα με ένα κλικ. Αντίθετα, ακολουθείται η παρακάτω ροή:
+Συναγερμοί:`energos`, `anagnwrismenos`, `epilymenos` και ανεξάρτητο `energi_aitia`. Οι αναγνωρισμένοι ανεπίλυτοι παραμένουν στη σύνοψη. Επίλυση ενεργής αιτίας →409, εκτός αν βασικός συντονιστής δώσει `xeirokiniti_parakampsi:true` και τεκμηριωμένο σχόλιο. Η παράκαμψη δεν επισκευάζει φυσικά την αιτία.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Χειριστής (UI)
-    participant UI as Frontend Dashboard
-    participant API as Backend API (/api/v1)
-    participant Phys as Φυσικό Μοντέλο & Βάση
-
-    User->>UI: Εισαγωγή επιθυμητής τιμής (π.χ. T = 294.15 K)
-    UI->>API: POST /.../proepiskopisi (AitimaProepiskopisis)
-    API->>Phys: Υπολογισμός επιπτώσεων (ισχύς, υπόλοιπο, ρίσκο)
-    Phys-->>API: Προβλεπόμενες τιμές
-    API-->>UI: 200 OK (id_proepiskopisis, epiptwsi, proeidopoiiseis)
-    UI->>User: Εμφάνιση Modal Επιβεβαίωσης με τις επιπτώσεις
-    
-    alt Ο Χρήστης Πατάει "Επιβεβαίωση"
-        User->>UI: Κλικ "Επιβεβαίωση"
-        UI->>API: POST /.../entoles (id_proepiskopisis) + Idempotency-Key
-        API->>Phys: Εφαρμογή εντολής & καταγραφή audit log
-        Phys-->>API: Οριστική ενημέρωση
-        API-->>UI: 200 OK (Κατάσταση: oloklirothike / se_exelixi)
-        UI->>User: Toast ειδοποίηση επιτυχίας & ανανέωση dashboard
-    else Ο Χρήστης Πατάει "Ακύρωση"
-        User->>UI: Κλικ "Ακύρωση"
-        UI->>API: POST /.../akyrosi (ή απλή απόρριψη modal)
-        API-->>UI: 200 OK (Ακυρώθηκε χωρίς καμία επίπτωση)
-        UI->>User: Επιστροφή στην προηγούμενη κατάσταση
-    end
-```
-
----
-
-## 4. Μηχανή Καταστάσεων Εντολών (Command State Machine)
-
-```mermaid
-stateDiagram-v2
-    [*] --> protathike: Δημιουργία πρότασης
-    protathike --> proepiskopithike: Κλήση POST /proepiskopisi
-    proepiskopithike --> epivevaiwthike: Κλήση POST /entoles (Confirm)
-    proepiskopithike --> akyrothike: Κλικ Ακύρωση / Timeout
-    epivevaiwthike --> se_exelixi: Ανάληψη από υποσύστημα
-    se_exelixi --> oloklirothike: Επιτυχής εκτέλεση
-    se_exelixi --> apetyxe: Αποτυχία υλικού/ορίου
-    se_exelixi --> avevaio: Απώλεια τηλεμετρίας / comm loss
-    avevaio --> oloklirothike: Επανασύνδεση & επιβεβαίωση
-    avevaio --> apetyxe: Χρονικό όριο αναμονής (Timeout)
-    oloklirothike --> [*]
-    apetyxe --> [*]
-    akyrothike --> [*]
-```
-
----
-
-## 5. Τυποποιημένη Δομή Απόκρισης Μέτρησης Αισθητήρα
-
-Όλες οι αποκρίσεις που αφορούν τιμές αισθητήρων ακολουθούν ενιαία δομή:
+## Σφάλματα
 
 ```json
-{
-  "megethos": "thermokrasia_thalamou",
-  "timi": 293.15,
-  "monada": "K",
-  "eidos": "metrimeno",
-  "pigi": "aisthitiras_th_01",
-  "xronos_metrisis": "2026-11-10T00:00:00Z",
-  "poiotita": "egkyro",
-  "avevaiotita": {
-    "apolyti_timi": 0.5,
-    "monada": "K",
-    "pososto": 0.17
-  },
-  "tasi": "statheri",
-  "einai_palio": false
-}
+{"sfalma":{"kodikos":"PALIA_PROEPISKOPISI","minyma":"Η κατάσταση μεταβλήθηκε.","leptomereies":{},"id_aitimatos":"...","epanalipsimo":false}}
 ```
 
-### Επεξήγηση Πεδίων για το Frontend
-- `megethos`: Το αναγνωριστικό του μεγέθους σε Greeklish (π.χ. `thermokrasia_eswteriki`, `piesi_pa`, `pososto_oxygonou`).
-- `timi`: Η αριθμητική τιμή της μέτρησης.
-- `monada`: Η μονάδα μέτρησης (`K`, `Pa`, `kg`, `kW`, `kWh`, `L`, `pososto`).
-- `eidos`: `metrimeno` (πραγματική μέτρηση), `ektimimeno` (εκτίμηση μέσω μοντέλου), `provlepsi` (μελλοντική πρόβλεψη), `setpoint` (επιθυμητός στόχος ρύθμισης).
-- `poiotita`: `egkyro` (πράσινο badge στο UI), `ypovathmismeno` (κίτρινο badge), `palio` (πορτοκαλί ένδειξη stale data), `apousia` (κόκκινη ένδειξη offline αισθητήρα).
-- `avevaiotita`: Προαιρετικό αντικείμενο στατιστικής αβεβαιότητας ($\pm \Delta$).
-- `tasi`: `afksousa` ($\uparrow$), `fthinousa` ($\downarrow$), `statheri` ($\rightarrow$), `agnwsti`.
+| HTTP | Σημασία | Χειρισμός διεπαφής |
+|---|---|---|
+|401|απουσία/άγνωστη/ανενεργή ταυτότητα|επιλογή ενεργού λογαριασμού|
+|403|ανεπαρκής ρόλος ή πεδίο|πρόταση συνεργασίας/μεταβίβασης|
+|404|ανύπαρκτο asset/preview ή λάθος γονικό asset|ανανέωση λίστας|
+|409|παλιό/χρησιμοποιημένο preview, σύγκρουση, μη ασφαλής μετάβαση, ανεπαρκείς πόροι|νέα ανάγνωση/πρόταση· όχι τυφλή επανάληψη|
+|422|μη έγκυρο πεδίο,άγνωστο πεδίο, NaN/Infinity, χρόνος χωρίς offset|διόρθωση φόρμας|
+|503|απούσα/παλιά κρίσιμη μέτρηση|εξήγηση ποιότητας και ασφαλής αποκατάσταση|
+|500|απρόβλεπτο σφάλμα|διατήρηση ID αιτήματος, επανέλεγχος κατάστασης|
 
----
+Οι δημόσιες GET αναγνώσεις είναι εκπαιδευτικά διαθέσιμες χωρίς ταυτότητα. CORS:`EPITREPOMENES_PROELEFSEIS`, ρητές προελεύσεις ανάπτυξης. Μην στέλνετε εσωτερικά ονόματα ρόλων για να παρακάμψετε έλεγχο.
 
-## 6. Τυποποιημένος Φάκελος Σφάλματος (Unified Error Envelope)
+## Αλλαγές που απαιτούν προσαρμογή παλιάς διεπαφής
 
-Όλες οι αποκρίσεις αποτυχίας (HTTP 400, 403, 404, 409, 422, 500) επιστρέφουν JSON με ρίζα `sfalma`:
-
-```json
-{
-  "sfalma": {
-    "kodikos": "ANEPARKES_NERO",
-    "minyma": "Το διαθέσιμο νερό πάνω από την εφεδρεία δεν επαρκεί για την άρδευση.",
-    "leptomereies": {
-      "diathesimo_l": 6000.0,
-      "zitoumeno_l": 10000.0,
-      "efedreia_asfaleias_l": 1500.0
-    },
-    "id_aitimatos": null,
-    "epanalipsimo": false
-  }
-}
-```
-
-### Πίνακας Κωδικών Σφαλμάτων Domain
-
-| Κωδικός (`kodikos`) | HTTP Status | Σημασία & Οδηγία για το UI |
-| :--- | :---: | :--- |
-| `ANEPARKES_NERO` | 400 | Το αιτούμενο νερό υπερβαίνει το διαθέσιμο. Εμφάνιση κόκκινου banner στο modal άρδευσης. |
-| `EKTOS_ORIWN` | 400 | Η αιτούμενη τιμή (π.χ. θερμοκρασία) είναι εκτός επιτρεπτών ορίων. |
-| `ANARMODIOS_ROLOS` | 403 | Ο χρήστης δεν έχει δικαίωμα για την ενέργεια. Εμφάνιση απαγορευτικού μηνύματος ή πρόταση μεταβίβασης ρόλου. |
-| `DEN_VRETHIKE` | 404 | Ο πόρος (θάλαμος, όχημα, δεξαμενή) δεν βρέθηκε. |
-| `STALE_PREVIEW` / `DIENEXI` | 409 | Η προεπισκόπηση έληξε ή άλλαξαν τα δεδομένα ενδιάμεσα. Απαιτείται ανανέωση προεπισκόπησης. |
-| `AKYRI_TIMI` | 422 | Σφάλμα validation πεδίων εισόδου από το Pydantic. |
-| `ESWTERIKO_SFALMA` | 500 | Απρόβλεπτο σφάλμα εξυπηρετητή. Εμφάνιση γενικού μηνύματος αποτυχίας. |
+Προστέθηκε υποχρεωτική ρητή ταυτότητα στις μεταβολές. Confirm φωτισμού, ανακύκλωσης, περιορισμού, αποστολής, ανάκλησης, στάσης και καταιγίδας απαιτεί αποθηκευμένο preview ID. Το όριο ζωής preview είναι `xronos_liksis_proepiskopisis`, ενώ `xronos_liksis` σημαίνει τέλος προγράμματος. Νέοι Greeklish κωδικοί/πεδία:`PALIA_PROEPISKOPISI`, `statistika_senariou`, `arxiki_katastasi`, `arxiki_kw`, `oxima`, `mol_xrisimou_oxygonou`, `id_istorikou`, `id_synagermou`, `odigies_kefalidwn`, `asfalis_stasi_oximatos`, `syntelestis_skonis`. Δεν βασιζόμαστε στα προηγούμενα αγγλικά aliases. Το reset απαιτεί ρητό σώμα και περιβάλλον ανάπτυξης. Οι αριθμοί σε καταστάσεις και παραδείγματα πρέπει να διαβάζονται από API, όχι να αποθηκεύονται ως σταθερά UI.

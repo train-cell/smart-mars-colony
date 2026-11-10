@@ -1,145 +1,83 @@
-"""Εξαντλητικές δοκιμές ενοποίησης για πλήρη κάλυψη όλων των υπηρεσιών και διαδρομών σφάλματος."""
-
-from datetime import datetime, timezone
+"""Προστασία μόνιμων προεπισκοπήσεων, στόχων και ολοκληρωμένων εντολών."""
 
 import pytest
-from sqlalchemy.orm import Session
 
-from backend.app.pyrinas.asfaleia import DedomenaXristi, RolosXristi
-from backend.app.pyrinas.sfalmata import SfalmaDomain
-from backend.app.ypiresies.ypiresia_apostolwn import YpiresiaApostolwn
-from backend.app.ypiresies.ypiresia_porwn import (
-    YpiresiaPorwn,
-)
-from backend.app.ypiresies.ypiresia_ypostiriksis_zwis import (
-    PROEPISKOPISEIS_THERMOKRASIAS,
-    YpiresiaYpostiriksisZwis,
-)
+from backend.app.montela import Aisthitiras, MetrisiAisthitira
 
 
-def test_ypiresia_ypostiriksis_zwis_sfalmata(synedria_dokimwn: Session):
-    """Ελέγχει σφάλματα και ακραίες περιπτώσεις στην υπηρεσία υποστήριξης ζωής."""
-    ypiresia = YpiresiaYpostiriksisZwis(synedria_dokimwn)
-    xristis = DedomenaXristi(
-        id_xristi="xristis_01",
-        onoma="Life Officer",
-        vasikos_rolos=RolosXristi.YPEFTHYNOS_YPOSTIRIKSIS_ZWIS,
-        energoi_roloi=[RolosXristi.YPEFTHYNOS_YPOSTIRIKSIS_ZWIS],
+def _proepiskopisi(pelatis, timi=295, ekdosi=1):
+    return pelatis.post(
+        "/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/proepiskopisi",
+        json={"epithymiti_thermokrasia_k": timi, "anamenomeni_ekdosi_katastasis": ekdosi},
     )
 
-    # 1. Χώρος δεν βρέθηκε (404)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.pare_katastasi_xwrou("mh_yparktos_xwros")
-    assert exc.value.katastasi_http == 404
 
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.provlepsi_oxygonou("mh_yparktos_xwros")
-    assert exc.value.katastasi_http == 404
-
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.proepiskopisi_allagis_thermokrasias("mh_yparktos_xwros", 295.0, 1)
-    assert exc.value.katastasi_http == 404
-
-    # 2. Θερμοκρασία εκτός ορίων (400)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.proepiskopisi_allagis_thermokrasias("xwros_01", 200.0, 1)
-    assert exc.value.katastasi_http == 400
-
-    # 3. Stale version (409)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.proepiskopisi_allagis_thermokrasias("xwros_01", 295.0, 999)
-    assert exc.value.katastasi_http == 409
-
-    # 4. Μη έγκυρη προεπισκόπηση κατά την εκτέλεση (404)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.ektelesi_allagis_thermokrasias("xwros_01", "mh_yparrkti_proep", 1, xristis)
-    assert exc.value.katastasi_http == 404
-
-    # 5. Stale version κατά την εκτέλεση (409)
-    PROEPISKOPISEIS_THERMOKRASIAS["fake_proep"] = {
-        "id_xwrou": "xwros_01",
-        "epithymiti_thermokrasia_k": 294.0,
-        "xronos_dimiourgias": datetime.now(timezone.utc),
-    }
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.ektelesi_allagis_thermokrasias("xwros_01", "fake_proep", 999, xristis)
-    assert exc.value.katastasi_http == 409
-
-
-def test_ypiresia_porwn_sfalmata_kai_akyroseis(synedria_dokimwn: Session):
-    """Ελέγχει σφάλματα, ακυρώσεις και ακραίες τιμές στην υπηρεσία πόρων."""
-    ypiresia = YpiresiaPorwn(synedria_dokimwn)
-    xristis = DedomenaXristi(
-        id_xristi="xristis_02",
-        onoma="Resource Officer",
-        vasikos_rolos=RolosXristi.YPEFTHYNOS_PORWN,
-        energoi_roloi=[RolosXristi.YPEFTHYNOS_PORWN],
+def test_palia_proepiskopisi_meta_kataigida_aporriptetai(pelatis_dokimwn):
+    stoixeio_pi = _proepiskopisi(pelatis_dokimwn).json()
+    assert pelatis_dokimwn.post("/api/v1/senaria/kataigida-skonis/energopoiisi").status_code == 200
+    ekdosi = pelatis_dokimwn.get("/api/v1/xwroi-katoikisis").json()[0]["ekdosi_katastasis"]
+    stoixeio_alfa = pelatis_dokimwn.post(
+        "/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles",
+        json={
+            "id_proepiskopisis": stoixeio_pi["id_proepiskopisis"],
+            "anamenomeni_ekdosi_katastasis": ekdosi,
+        },
     )
-    syntonistis = DedomenaXristi(
-        id_xristi="syntonistis",
-        onoma="Coordinator",
-        vasikos_rolos=RolosXristi.SYNTONISTIS_APOIKIAS,
-        energoi_roloi=[RolosXristi.SYNTONISTIS_APOIKIAS],
+    assert stoixeio_alfa.status_code == 409
+    assert pelatis_dokimwn.get("/api/v1/energeia/fortia").json()[0] is not None
+
+
+def test_oloklirwmeni_entoli_den_akyronetai(pelatis_dokimwn):
+    stoixeio_pi = _proepiskopisi(pelatis_dokimwn).json()
+    stoixeio_alfa = pelatis_dokimwn.post(
+        "/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles",
+        json={
+            "id_proepiskopisis": stoixeio_pi["id_proepiskopisis"],
+            "anamenomeni_ekdosi_katastasis": 1,
+        },
     )
-
-    # 1. Θερμοκήπιο ή ζώνη δεν βρέθηκε (404)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.proepiskopisi_ardefsis("mh_yparrktos", "zwni_01", 50.0, 30)
-    assert exc.value.katastasi_http == 404
-
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.proepiskopisi_ardefsis("thermokipio_01", "mh_yparrkti_zwni", 50.0, 30)
-    assert exc.value.katastasi_http == 404
-
-    # 2. Προεπισκόπηση δεν βρέθηκε κατά την επιβεβαίωση (404)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.dimiourgia_programmatos_ardefsis("mh_yparrkti_proep", xristis)
-    assert exc.value.katastasi_http == 404
-
-    # 3. Ακύρωση προγράμματος που δεν υπάρχει (404)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.akyrosi_programmatos_ardefsis("mh_yparrkto_prog", xristis)
-    assert exc.value.katastasi_http == 404
-
-    # 4. Περιορισμός φορτίων: μη εξουσιοδοτημένος χρήστης (403)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.ektelesi_periorismou_fortiwn(
-            pausi_anavlhtwn=True, xristis=xristis, aitiologia="Dokimi"
-        )
-    assert exc.value.katastasi_http == 403
-
-    # 5. Περιορισμός φορτίων: επιτυχής εκτέλεση από συντονιστή
-    res_shed = ypiresia.ektelesi_periorismou_fortiwn(
-        pausi_anavlhtwn=True, xristis=syntonistis, aitiologia="Test Curtailment"
+    assert stoixeio_alfa.status_code == 200, stoixeio_alfa.text
+    assert (
+        pelatis_dokimwn.post(
+            "/api/v1/entoles/" + stoixeio_alfa.json()["id_entolis"] + "/akyrosi"
+        ).status_code
+        == 409
     )
-    assert res_shed["pausi_anavlhtwn"] is True
-    assert res_shed["arithmos_fortiwn_pou_allaksan"] >= 0
+    x = pelatis_dokimwn.get("/api/v1/xwroi-katoikisis/xwros_01/katastasi").json()
+    assert x["thermokrasia"]["epithymiti_k"] == 295
+    assert x["thermokrasia"]["eswteriki_k"] == 293
+    assert pelatis_dokimwn.post("/api/v1/prosomoiwsi/vima", json={"lepta": 15}).status_code == 200
+    x = pelatis_dokimwn.get("/api/v1/xwroi-katoikisis/xwros_01/katastasi").json()
+    assert 293 < x["thermokrasia"]["eswteriki_k"] < 295
 
 
-def test_ypiresia_apostolwn_sfalmata_kai_safe_stop(synedria_dokimwn: Session):
-    """Ελέγχει σφάλματα, rover safe stop και αναβολές στην υπηρεσία αποστολών."""
-    ypiresia = YpiresiaApostolwn(synedria_dokimwn)
-    xeiristis = DedomenaXristi(
-        id_xristi="xristis_03",
-        onoma="Rover Operator",
-        vasikos_rolos=RolosXristi.YPEFTHYNOS_APOSTOLWN,
-        energoi_roloi=[RolosXristi.YPEFTHYNOS_APOSTOLWN],
+@pytest.mark.parametrize("eidos", ["apousia", "palia", "ektos_leitourgias"])
+def test_mi_egkyri_pigi_apokleiei_proepiskopisi(pelatis_dokimwn, synedria_dokimwn, eidos):
+    if eidos == "apousia":
+        synedria_dokimwn.query(MetrisiAisthitira).delete()
+    elif eidos == "palia":
+        synedria_dokimwn.query(MetrisiAisthitira).update({"einai_palio": True})
+    else:
+        synedria_dokimwn.get(Aisthitiras, "aisth_thermokrasia_exw").katastasi = "ektos_leitourgias"
+    synedria_dokimwn.commit()
+    assert _proepiskopisi(pelatis_dokimwn).status_code == 503
+
+
+def test_mia_proepiskopisi_den_ekteleitai_dyo_fores(pelatis_dokimwn):
+    stoixeio_pi = _proepiskopisi(pelatis_dokimwn).json()
+    stoixeio_alfa = pelatis_dokimwn.post(
+        "/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles",
+        json={
+            "id_proepiskopisis": stoixeio_pi["id_proepiskopisis"],
+            "anamenomeni_ekdosi_katastasis": 1,
+        },
     )
-
-    # 1. Rover δεν βρέθηκε (404)
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.pare_katastasi_oximatos("mh_yparrkto_rover")
-    assert exc.value.katastasi_http == 404
-
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.proepiskopisi_anaklisis("mh_yparrkto_rover")
-    assert exc.value.katastasi_http == 404
-
-    with pytest.raises(SfalmaDomain) as exc:
-        ypiresia.ektelesi_asfalous_stasis("mh_yparrkto_rover", xeiristis)
-    assert exc.value.katastasi_http == 404
-
-    # 2. Προεπισκόπηση ασφαλούς στάσης
-    preview_stop = ypiresia.proepiskopisi_asfalous_stasis("rover_01")
-    assert preview_stop["protinomeni_drasi"] == "asfalis_stasi"
-    assert preview_stop["apaiteitai_epivevaiwsi"] is True
+    assert stoixeio_alfa.status_code == 200
+    stoixeio_vita = pelatis_dokimwn.post(
+        "/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles",
+        json={
+            "id_proepiskopisis": stoixeio_pi["id_proepiskopisis"],
+            "anamenomeni_ekdosi_katastasis": 2,
+        },
+    )
+    assert stoixeio_vita.status_code == 409

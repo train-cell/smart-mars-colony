@@ -6,6 +6,7 @@
 
 from typing import List
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,19 +20,25 @@ class RythmiseisEfarmogis(BaseSettings):
     )
 
     ONOMA_EFARMOGIS: str = "Smart Mars Colony Backend"
-    EKDOSI: str = "1.0.0"
+    EKDOSI: str = "1.1.0"
     PERIVALLON: str = "anaptyxi"
     DIADROMI_VASIS: str = "sqlite:///./smart_mars_colony.db"
     EPIPEDO_KATAGRAFIS: str = "INFO"
-    MYSTIKO_KLEIDI: str = "ekpaideftiko-kleidi-mono-gia-topiki-xrisi-demo"
-    EPITREPOMENA_ORIGINS: str = (
-        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+    DIASTIMA_LIKSIS_PROEPISKOPISIS_LEPTA: int = 15
+    MEGISTI_ILIKIA_METRISIS_LEPTA: int = 30
+    EPITREPOMENES_PROELEFSEIS: str = Field(
+        default="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173",
+        validation_alias=AliasChoices("EPITREPOMENES_PROELEFSEIS", "EPITREPOMENA_ORIGINS"),
     )
 
     @property
-    def lista_epitrepomenwn_origins(self) -> List[str]:
+    def lista_epitrepomenwn_proelefsewn(self) -> List[str]:
         """Επιστρέφει τη λίστα των επιτρεπόμενων origins για CORS."""
-        return [origin.strip() for origin in self.EPITREPOMENA_ORIGINS.split(",") if origin.strip()]
+        return [
+            proelefsi.strip()
+            for proelefsi in self.EPITREPOMENES_PROELEFSEIS.split(",")
+            if proelefsi.strip()
+        ]
 
 
 rythmiseis = RythmiseisEfarmogis()

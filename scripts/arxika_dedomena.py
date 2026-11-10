@@ -8,10 +8,13 @@ python scripts/arxika_dedomena.py [--reset]
 import sys
 
 from backend.app.arxika_dedomena.fortwsi_dedomenwn import arxikopoiisi_dedomenwn_epideiksis
+from backend.app.pyrinas.rythmiseis import rythmiseis
 from backend.app.vasi.synthesi import SynedriaVasis
 
 
-def main():
+def ektelesi_arxikopoiisis():
+    if rythmiseis.PERIVALLON not in {"anaptyxi", "dokimes"}:
+        raise SystemExit("Η αρχικοποίηση επίδειξης επιτρέπεται μόνο σε ανάπτυξη/δοκιμές.")
     epanarxikopoiisi = "--reset" in sys.argv
     synedria = SynedriaVasis()
     try:
@@ -23,4 +26,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    ektelesi_arxikopoiisis()

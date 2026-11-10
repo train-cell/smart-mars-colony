@@ -3,7 +3,7 @@
 from fastapi.testclient import TestClient
 
 
-def test_rbac_forbidden_and_coordinator_approval(pelatis_dokimwn: TestClient):
+def test_roloi_apagorevsi_kai_egkrisi_syntonisti(pelatis_dokimwn: TestClient):
     """TEST-12: Έλεγχος δικαιωμάτων ρόλων: απόρριψη μη εξουσιοδοτημένων ενεργειών και coordinator approval."""
     # 1. Ο χειριστής υποστήριξης ζωής ΔΕΝ μπορεί να προγραμματίσει άρδευση (μόνο ο χειριστής πόρων ή ο coordinator)
     apantisi_ardefsi = pelatis_dokimwn.post(
@@ -15,25 +15,29 @@ def test_rbac_forbidden_and_coordinator_approval(pelatis_dokimwn: TestClient):
     assert apantisi_ardefsi.json()["sfalma"]["kodikos"] == "ANARMODIOS_XRISTIS"
 
     # 2. Ο χειριστής πόρων ΔΕΝ μπορεί να διατάξει διασταυρούμενο load shedding (μόνο coordinator)
-    apantisi_shed = pelatis_dokimwn.post(
+    apantisi_periorismou = pelatis_dokimwn.post(
         "/api/v1/energeia/periorismos-fortiwn/entoles",
         json={"pausi_anavlhtwn": True, "aitiologia": "Δοκιμή παύσης"},
         headers={"X-Id-Xristi": "xristis_porwn", "X-Rolos": "ypefthynos_porwn"},
     )
-    assert apantisi_shed.status_code == 403
-    assert apantisi_shed.json()["sfalma"]["kodikos"] == "ANARMODIOS_XRISTIS"
+    assert apantisi_periorismou.status_code == 403
+    assert apantisi_periorismou.json()["sfalma"]["kodikos"] == "ANARMODIOS_XRISTIS"
 
     # 3. Ο συντονιστής αποικίας ΜΠΟΡΕΙ να εκτελέσει load shedding
-    apantisi_shed_coord = pelatis_dokimwn.post(
-        "/api/v1/energeia/periorismos-fortiwn/entoles",
+    proepiskopisi_periorismou = pelatis_dokimwn.post(
+        "/api/v1/energeia/periorismos-fortiwn/proepiskopisi",
         json={"pausi_anavlhtwn": True, "aitiologia": "Επίσημη έγκριση συντονιστή για δοκιμή"},
+    ).json()
+    apantisi_periorismou_syntonisti = pelatis_dokimwn.post(
+        "/api/v1/energeia/periorismos-fortiwn/entoles",
+        json={"id_proepiskopisis": proepiskopisi_periorismou["id_proepiskopisis"]},
         headers={"X-Id-Xristi": "syntonistis", "X-Rolos": "syntonistis_apoikias"},
     )
-    assert apantisi_shed_coord.status_code == 200
-    assert apantisi_shed_coord.json()["pausi_anavlhtwn"] is True
+    assert apantisi_periorismou_syntonisti.status_code == 200
+    assert apantisi_periorismou_syntonisti.json()["pausi_anavlhtwn"] is True
 
 
-def test_idempotency_key_prevents_duplicate_execution(pelatis_dokimwn: TestClient):
+def test_kleidi_monadikotitas_apotrepei_dipli_ektelesi(pelatis_dokimwn: TestClient):
     """TEST-13: Το κλειδί idempotency αποτρέπει διπλή εκτέλεση εντολής."""
     id_xwrou = "xwros_01"
 
@@ -63,13 +67,13 @@ def test_idempotency_key_prevents_duplicate_execution(pelatis_dokimwn: TestClien
     assert apantisi_2.status_code == 200
     # Επιστρέφεται η ίδια εντολή χωρίς διπλή τροποποίηση της κατάστασης
     assert apantisi_2.json()["id_entolis"] == id_entolis_1
-    assert "idempotent replay" in apantisi_2.json()["minyma"]
+    assert apantisi_2.json() == apantisi_1.json()
 
 
-def test_delegation_grant_and_revoke(pelatis_dokimwn: TestClient):
+def test_metavivasi_egkrisi_kai_anaklisi(pelatis_dokimwn: TestClient):
     """TEST-23: Μεταβίβαση ελέγχου από coordinator, διάρκεια, λήξη και ανάκληση (CORE-18)."""
     # 1. Έγκριση μεταβίβασης από συντονιστή
-    apantisi_grant = pelatis_dokimwn.post(
+    apantisi_metavivasis = pelatis_dokimwn.post(
         "/api/v1/dikaiwmata/metavivaseis",
         json={
             "id_paralipti": "xristis_zwis",
@@ -79,13 +83,15 @@ def test_delegation_grant_and_revoke(pelatis_dokimwn: TestClient):
         },
         headers={"X-Id-Xristi": "syntonistis"},
     )
-    assert apantisi_grant.status_code == 200
-    metav = apantisi_grant.json()
+    assert apantisi_metavivasis.status_code == 200
+    metav = apantisi_metavivasis.json()
     id_metavivasis = metav["id_metavivasis"]
 
     # 2. Έλεγχος ότι εμφανίζεται στις ενεργές μεταβιβάσεις
     apantisi_listas = pelatis_dokimwn.get("/api/v1/dikaiwmata/metavivaseis?mono_energes=true")
-    assert any(m["id_metavivasis"] == id_metavivasis for m in apantisi_listas.json())
+    assert any(
+        stoixeio_mi["id_metavivasis"] == id_metavivasis for stoixeio_mi in apantisi_listas.json()
+    )
 
     # 3. Ανάκληση μεταβίβασης
     apantisi_anaklisi = pelatis_dokimwn.post(
@@ -97,10 +103,13 @@ def test_delegation_grant_and_revoke(pelatis_dokimwn: TestClient):
 
     # 4. Επαλήθευση ότι δεν είναι πλέον ενεργή
     apantisi_listas_meta = pelatis_dokimwn.get("/api/v1/dikaiwmata/metavivaseis?mono_energes=true")
-    assert not any(m["id_metavivasis"] == id_metavivasis for m in apantisi_listas_meta.json())
+    assert not any(
+        stoixeio_mi["id_metavivasis"] == id_metavivasis
+        for stoixeio_mi in apantisi_listas_meta.json()
+    )
 
 
-def test_xeiristis_oximatos_alias_support(pelatis_dokimwn: TestClient):
+def test_psevdonymo_xeiristi_oximatos(pelatis_dokimwn: TestClient):
     """Έλεγχος υποστήριξης των headers alias 'xeiristis_oximatos'."""
     apantisi = pelatis_dokimwn.get(
         "/api/v1/taftopoiisi/trexwn-xristis",

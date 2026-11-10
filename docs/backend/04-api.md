@@ -1,290 +1,80 @@
-# 04 - Τεκμηρίωση Διεπαφών API (Endpoints Reference)
+# Αναφορά API · έκδοση 1.1.0
 
-Όλα τα endpoints έχουν πρόθεμα `/api/v1` και επιστρέφουν JSON. Η ταυτοποίηση γίνεται μέσω των HTTP headers `X-ID-Xristi` και `X-Rolos`.
+Η αναφορά εξάγεται από το πραγματικό OpenAPI. Βάση URL:`/api/v1`. Τα ακριβή σώματα, πεδία, όρια και μοντέλα απαντήσεων βρίσκονται στο [OpenAPI](../koino/openapi.json). Παραδείγματα, ρόλοι, χρόνοι και χειρισμός σφαλμάτων στη [σύμβαση διεπαφής](../koino/symvolaio-frontend-backend.md).
 
----
+| Μέθοδος | Διαδρομή | Λειτουργία | Σχήμα επιτυχίας |
+|---|---|---|---|
+|GET|`/api/v1/ygeia`|Έλεγχος υγείας του backend και της βάσης SQLite|`YgeiaApantisi`|
+|GET|`/api/v1/metadedomena`|Μεταδεδομένα, μονάδες μέτρησης και διαθέσιμα statuses|`MetadedomenaApantisi`|
+|POST|`/api/v1/taftopoiisi/eisodos`|Είσοδος χρήστη επίδειξης|`EisodosApantisi`|
+|GET|`/api/v1/taftopoiisi/trexwn-xristis`|Πληροφορίες συνδεδεμένου χρήστη|`XristisApantisi`|
+|GET|`/api/v1/dikaiwmata/metavivaseis`|Ανάκτηση ισχυουσών μεταβιβάσεων ανά ρόλο και πεδίο|`λίστα MetavivasiApantisi`|
+|POST|`/api/v1/dikaiwmata/metavivaseis`|Έγκριση μεταβίβασης από coordinator με audit|`EgkrisiMetavivasisApantisi`|
+|POST|`/api/v1/dikaiwmata/metavivaseis/proepiskopisi`|Προεπισκόπηση επιπτώσεων και επιλεξιμότητας μεταβίβασης|`ProepiskopisiMetavivasisApantisi`|
+|POST|`/api/v1/dikaiwmata/metavivaseis/{id_metavivasis}/anaklisi`|Ανάκληση εξουσιοδότησης με audit|`AnaklisiMetavivasisApantisi`|
+|GET|`/api/v1/synopsi`|Συνοπτική κοινή κατάσταση αποικίας και ενεργοί συναγερμοί|`SynopsiApantisi`|
+|GET|`/api/v1/aisthitires`|Λίστα αισθητήρων με προαιρετικό φιλτράρισμα asset/metric|`λίστα AisthitirasApantisi`|
+|GET|`/api/v1/aisthitires/{id_aisthitira}/metriseis`|Ιστορικό και ποιότητα μετρήσεων αισθητήρα|`λίστα MetrisiApantisi`|
+|GET|`/api/v1/xwroi-katoikisis`|Λίστα κατοικήσιμων χώρων και βασικών μετρήσεων (LIFE-01)|`λίστα XwrosApantisi`|
+|GET|`/api/v1/xwroi-katoikisis/{id_xwrou}/katastasi`|Πλήρες snapshot υποστήριξης ζωής θαλάμου (LIFE-02, LIFE-03)|`KatastasiXwrouApantisi`|
+|GET|`/api/v1/xwroi-katoikisis/{id_xwrou}/provlepsi-oxygonou`|Πρόβλεψη οξυγόνου και εκτίμηση αυτονομίας (LIFE-04)|`OxygonoApantisi`|
+|POST|`/api/v1/xwroi-katoikisis/{id_xwrou}/thermokrasia/proepiskopisi`|Προεπισκόπηση αλλαγής θερμοκρασίας χωρίς μεταβολή κατάστασης (LIFE-06, §7)|`ProepiskopisiThermokrasiasApantisi`|
+|POST|`/api/v1/xwroi-katoikisis/{id_xwrou}/thermokrasia/entoles`|Επιβεβαίωση και εκτέλεση αλλαγής θερμοκρασίας (LIFE-07)|`EpivevaiwsiThermokrasiasApantisi`|
+|GET|`/api/v1/entoles/{id_entolis}`|Ανάκτηση κατάστασης και κύκλου ζωής εντολής (CORE-10)|`EntoliPlirisApantisi`|
+|POST|`/api/v1/entoles/{id_entolis}/akyrosi`|Ακύρωση εντολής εφόσον επιτρέπεται (CORE-10)|`AkyrosiEntolisApantisi`|
+|POST|`/api/v1/xwroi-katoikisis/{id_xwrou}/syskeves/{id_syskevis}/proepiskopisi`|Προεπισκόπηση θέρμανσης, καθαριστή αέρα ή παραγωγής οξυγόνου|`ProepiskopisiSyskevisApantisi`|
+|POST|`/api/v1/xwroi-katoikisis/{id_xwrou}/syskeves/{id_syskevis}/entoles`|Επιβεβαίωση ρύθμισης εξοπλισμού υποστήριξης ζωής|`EpivevaiwsiSyskevisApantisi`|
+|GET|`/api/v1/thermokipia`|Pare Thermokipia|`λίστα ThermokipioApantisi`|
+|GET|`/api/v1/thermokipia/{id_thermokipiou}/zwnes`|Pare Zwnes Thermokipiou|`λίστα ZwniApantisi`|
+|POST|`/api/v1/thermokipia/{id_thermokipiou}/ardefsi/proepiskopisi`|Proepiskopisi Ardefsis|`ProepiskopisiArdefsisApantisi`|
+|POST|`/api/v1/thermokipia/{id_thermokipiou}/ardefsi/programmata`|Dimiourgia Programmatos Ardefsis|`ArdefsiApantisi`|
+|GET|`/api/v1/thermokipia/{id_thermokipiou}/ardefsi/programmata`|Pare Programmata Ardefsis|`λίστα ProgrammaArdefsisApantisi`|
+|POST|`/api/v1/ardefsi/programmata/{id_programmatos}/akyrosi`|Akyrosi Ardefsis|`AkyrosiApantisi`|
+|POST|`/api/v1/thermokipia/{id_thermokipiou}/fwtismos/proepiskopisi`|Proepiskopisi Fwtismou|`ProepiskopisiFwtismouApantisi`|
+|POST|`/api/v1/thermokipia/{id_thermokipiou}/fwtismos/entoles`|Dimiourgia Programmatos Fwtismou|`FwtismosApantisi`|
+|GET|`/api/v1/thermokipia/{id_thermokipiou}/fwtismos/programmata`|Pare Programmata Fwtismou|`λίστα ProgrammaFwtismouApantisi`|
+|POST|`/api/v1/thermokipia/{id_thermokipiou}/fwtismos/programmata/{id_programmatos}/akyrosi`|Akyrosi Fwtismou|`AkyrosiApantisi`|
+|GET|`/api/v1/nero/dexamenes`|Pare Dexamenes Nerou|`NeroApantisi`|
+|GET|`/api/v1/nero/isozygio`|Pare Isozygio Nerou|`IsozygioNerouApantisi`|
+|GET|`/api/v1/nero/roes`|Pare Roes Nerou|`λίστα RoiApantisi`|
+|POST|`/api/v1/nero/anakyklwsi/proepiskopisi`|Proepiskopisi Anakyklwsis|`ProepiskopisiAnakyklwsisApantisi`|
+|POST|`/api/v1/nero/anakyklwsi/entoles`|Dimiourgia Programmatos Anakyklwsis|`AnakyklwsiApantisi`|
+|POST|`/api/v1/nero/anakyklwsi/programmata`|Dimiourgia Programmatos Anakyklwsis|`AnakyklwsiApantisi`|
+|GET|`/api/v1/nero/anakyklwsi/programmata`|Pare Programmata Anakyklwsis|`λίστα ProgrammaAnakyklwsisApantisi`|
+|POST|`/api/v1/nero/anakyklwsi/programmata/{id_programmatos}/akyrosi`|Akyrosi Anakyklwsis|`AkyrosiApantisi`|
+|GET|`/api/v1/energeia/katastasi`|Pare Katastasi Energeias|`EnergeiaApantisi`|
+|GET|`/api/v1/energeia/fortia`|Pare Energeiaka Fortia|`λίστα FortioApantisi`|
+|GET|`/api/v1/energeia/fwtovoltaika`|Pare Fwtovoltaika|`λίστα FwtovoltaikoApantisi`|
+|GET|`/api/v1/energeia/syssoreftes`|Pare Syssoreftes|`λίστα SyssoreftisApantisi`|
+|POST|`/api/v1/energeia/periorismos-fortiwn/proepiskopisi`|Proepiskopisi Periorismou Fortiwn|`ProepiskopisiPeriorismouApantisi`|
+|POST|`/api/v1/energeia/periorismos-fortiwn/entoles`|Ektelesi Periorismou Fortiwn|`PeriorismosApantisi`|
+|GET|`/api/v1/nero/istoriko`|Χρονοσειρά στάθμης, ανακύκλωσης και διαρροών|`λίστα IstorikoPorwnApantisi`|
+|GET|`/api/v1/energeia/istoriko`|Χρονοσειρά ισχύος, αποθήκευσης και υδατικών ισοζυγίων|`λίστα IstorikoPorwnApantisi`|
+|GET|`/api/v1/kindynoi`|Μετρήσεις και προβλέψεις εξωτερικών κινδύνων|`λίστα KindynosApantisi`|
+|GET|`/api/v1/oximata`|Τηλεμετρία οχημάτων, επικοινωνία και πλήρωμα|`λίστα TilemetriaOximatos`|
+|GET|`/api/v1/oximata/{id_oximatos}/apostoles`|Κατάσταση οχήματος και αποθηκευμένες διαδρομές|`KatastasiOximatos`|
+|POST|`/api/v1/oximata/{id_oximatos}/apostoles`|Επιβεβαίωση προεπισκόπησης σχεδίου αποστολής|`ApantisiEntolisOximatos`|
+|POST|`/api/v1/oximata/{id_oximatos}/apostoles/proepiskopisi`|Προεπισκόπηση πλήρους ενεργειακού κόστους αποστολής|`ProepiskopisiSxediou`|
+|POST|`/api/v1/oximata/{id_oximatos}/anaklisi/proepiskopisi`|Ενέργεια, διαδρομή και επικοινωνία επιστροφής|`ProepiskopisiAnaklisis`|
+|POST|`/api/v1/oximata/{id_oximatos}/anaklisi/entoles`|Επιβεβαίωση ανάκλησης με ορατή κατάσταση παραλαβής|`ApantisiEntolisOximatos`|
+|POST|`/api/v1/oximata/{id_oximatos}/asfalis-stasi/proepiskopisi`|Συνέπειες ακινητοποίησης πριν από επιβεβαίωση|`ProepiskopisiStasis`|
+|POST|`/api/v1/oximata/{id_oximatos}/asfalis-stasi/entoles`|Ασφαλής στάση μετά από επιβεβαιωμένη παραλαβή|`ApantisiEntolisOximatos`|
+|POST|`/api/v1/oximata/{id_oximatos}/apostoles/{id_apostolis}/anavoli`|Αναβολή αποστολής πριν από την αναχώρηση|`ApantisiAnavolis`|
+|GET|`/api/v1/synagermoi`|Λίστα συναγερμών με διαχωρισμό σοβαρότητας και κατάστασης (SHARED-02)|`λίστα SynagermosApantisi`|
+|POST|`/api/v1/synagermoi/{id_synagermou}/anagnwrisi`|Αναγνώριση γνώσης συναγερμού (ΟΧΙ επίλυση - SHARED-02)|`AnagnwrisiSynagermouApantisi`|
+|POST|`/api/v1/synagermoi/{id_synagermou}/epilysi`|Οριστική επίλυση συναγερμού με επαλήθευση (SHARED-08)|`EpilysiSynagermouApantisi`|
+|GET|`/api/v1/senaria/kataigida-skonis`|Κατάσταση του fixture καταιγίδας σκόνης (STORM-01)|`KatastasiKataigidasApantisi`|
+|POST|`/api/v1/senaria/kataigida-skonis/proepiskopisi`|Προεπισκόπηση επιλογών καταιγίδας με υπολογισμούς Golden Fixture (§6, STORM-05)|`ProepiskopisiSenariouApantisi`|
+|POST|`/api/v1/senaria/kataigida-skonis/energopoiisi`|Ενεργοποίηση συνθηκών καταιγίδας σκόνης (STORM-02)|`EnergopoiisiSenariouApantisi`|
+|POST|`/api/v1/senaria/{id_senariou}/apofaseis/proepiskopisi`|Συγκρίσεις αποφάσεων σεναρίου (STORM-05)|`ProepiskopisiSenariouApantisi`|
+|POST|`/api/v1/senaria/{id_senariou}/apofaseis`|Υποβολή και έγκριση απόφασης συντονιστή για καταιγίδα (STORM-06, STORM-08)|`ApofasiApantisi`|
+|GET|`/api/v1/senaria/{id_senariou}/xronologio`|Χρονολόγιο και ιστορικό αποφάσεων σεναρίου (STORM-08)|`λίστα IstorikoApofasisApantisi`|
+|POST|`/api/v1/prosomoiwsi/vima`|Προώθηση προσομοιωμένου ρολογιού (Dev/Test only - CORE-13)|`VimaApantisi`|
+|POST|`/api/v1/prosomoiwsi/epanafora`|Επαναφορά προσομοίωσης στα αρχικά δεδομένα (Dev/Test only)|`EpanaforaApantisi`|
+|POST|`/api/v1/senaria/prokathorismena/{kodikos}/energopoiisi`|Εκπαιδευτική αστοχία ή αποκατάσταση|`EnergopoiisiSenariouApantisi`|
+|GET|`/api/v1/senaria/prokathorismena`|Διαθέσιμα εκπαιδευτικά σενάρια|`λίστα string`|
+|GET|`/api/v1/istoriko-elegxou`|Ανάκτηση αμετάβλητου ιστορικού ελέγχου (Audit Trail)|`λίστα IstorikoApantisi`|
 
-## 1. Υγεία και Μεταδεδομένα (Health & Meta)
+Σύνολο:70 λειτουργίες HTTP. Τα σφάλματα 400/401/403/404/409/422/500/503 χρησιμοποιούν `ApantisiSfalmatosSxhma`. Η ύπαρξη μοντέλου σφάλματος δεν σημαίνει ότι κάθε endpoint προκαλεί όλους τους κωδικούς.
 
-### GET `/health` & GET `/api/v1/ygeia`
-Επιστρέφει την κατάσταση λειτουργίας του backend, έκδοση και πληροφορίες περιβάλλοντος.
-```bash
-curl -s http://localhost:8000/health
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "katastasi": "leitourgiko",
-  "ekdosi": "0.1.0",
-  "perivallon": "anaptyxi",
-  "xronos": "2026-11-10T00:00:00Z"
-}
-```
-
----
-
-## 2. Υποστήριξη Ζωής (ECLSS - Υποσύστημα Α)
-
-### POST `/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/proepiskopisi`
-Υπολογίζει τις επιπτώσεις αλλαγής επιθυμητής θερμοκρασίας θαλάμου (απαιτούμενη θερμική ισχύς, διαφορικό, νέες απώλειες).
-```bash
-curl -s -X POST http://localhost:8000/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/proepiskopisi \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: xristis_01" \
-  -H "X-Rolos: ypefthynos_ypostiriksis_zwis" \
-  -d '{
-    "epithymiti_thermokrasia_k": 294.15,
-    "anamenomeni_ekdosi_katastasis": 1
-  }'
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "id_proepiskopisis": "proep_therm_...",
-  "id_xwrou": "xwros_01",
-  "ekdosi_senariou": 1,
-  "trexousa": {
-    "thermokrasia_k": 293.0,
-    "epithymiti_thermokrasia_k": 293.0
-  },
-  "zitoumeni": {
-    "epithymiti_thermokrasia_k": 294.15
-  },
-  "epiptwsi": {
-    "thermansi_prin_w": 8000.0,
-    "thermansi_meta_w": 8115.0,
-    "metavoli_w": 115.0
-  },
-  "apaiteitai_epivevaiwsi": true
-}
-```
-
-### POST `/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles`
-Επιβεβαιώνει και εφαρμόζει την αλλαγή στόχου θερμοκρασίας με υποστήριξη Idempotency Key.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/xwroi-katoikisis/xwros_01/thermokrasia/entoles \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: xristis_01" \
-  -H "X-Rolos: ypefthynos_ypostiriksis_zwis" \
-  -H "Idempotency-Key: idem-temp-1001" \
-  -d '{
-    "id_proepiskopisis": "proep_therm_...",
-    "anamenomeni_ekdosi_katastasis": 1
-  }'
-```
-
----
-
-## 3. Πόροι & Ενέργεια (Υποσύστημα Β)
-
-### POST `/api/v1/thermokipia/thermokipio_01/ardefsi/proepiskopisi`
-Ελέγχει τη διαθεσιμότητα νερού και υπολογίζει τις επιπτώσεις προγράμματος άρδευσης.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/thermokipia/thermokipio_01/ardefsi/proepiskopisi \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: xristis_02" \
-  -H "X-Rolos: ypefthynos_porwn" \
-  -d '{
-    "id_zwnis": "zwni_01",
-    "posotita_nerou_l": 50.0,
-    "diarkeia_lepta": 30
-  }'
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "id_proepiskopisis": "proep_ardefsi_...",
-  "id_thermokipiou": "thermokipio_01",
-  "id_zwnis": "zwni_01",
-  "id_dexamenis": "dexameni_01",
-  "posotita_nerou_l": 50.0,
-  "stathmi_prin_l": 7500.0,
-  "stathmi_meta_l": 7450.0,
-  "ygrasia_prin": 0.55,
-  "ygrasia_meta_ektimwmeni": 0.60,
-  "eparkis_stathmi": true
-}
-```
-
-### POST `/api/v1/thermokipia/thermokipio_01/ardefsi/programmata`
-Οριστικοποιεί το πότισμα, δεσμεύει το νερό από τη δεξαμενή και καταγράφει το πρόγραμμα άρδευσης.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/thermokipia/thermokipio_01/ardefsi/programmata \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: xristis_02" \
-  -H "X-Rolos: ypefthynos_porwn" \
-  -H "Idempotency-Key: idem-ard-2002" \
-  -d '{
-    "id_proepiskopisis": "proep_ardefsi_..."
-  }'
-```
-
-### POST `/api/v1/energeia/periorismos-fortiwn/proepiskopisi`
-Υπολογίζει τις επιπτώσεις παύσης αναβλητών φορτίων (θέρμανση θερμοκηπίου) για εξοικονόμηση ισχύος κατά τη διάρκεια καταιγίδας.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/energeia/periorismos-fortiwn/proepiskopisi \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: xristis_02" \
-  -H "X-Rolos: ypefthynos_porwn" \
-  -d '{
-    "pausi_anavlhtwn": true,
-    "aitiologia": "Εξοικονόμηση ισχύος λόγω επικείμενης καταιγίδας"
-  }'
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "pausi_anavlhtwn": true,
-  "katastasi_prin": {
-    "fortia_kw": 14.0,
-    "elleimma_kw": 9.2,
-    "autonomia_wres": 3.261
-  },
-  "katastasi_meta": {
-    "fortia_kw": 10.0,
-    "elleimma_kw": 5.2,
-    "autonomia_wres": 5.769
-  },
-  "ofelos": {
-    "meiwsi_isxyos_kw": 4.0,
-    "kerdos_autonomias_wres": 2.508,
-    "kerdos_autonomias_lepta": 150.5
-  },
-  "apaiteitai_egkrisi_syntonisti": true
-}
-```
-
-### POST `/api/v1/energeia/periorismos-fortiwn/entoles`
-Εκτελεί τον περιορισμό/αναστολή φορτίων με έγκριση συντονιστή και καταγραφή στο audit log.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/energeia/periorismos-fortiwn/entoles \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: syntonistis" \
-  -H "X-Rolos: syntonistis_apoikias" \
-  -H "Idempotency-Key: idem-per-01" \
-  -d '{
-    "pausi_anavlhtwn": true,
-    "aitiologia": "Εξοικονόμηση ισχύος λόγω επικείμενης καταιγίδας"
-  }'
-```
-
----
-
-## 4. Αποστολές & Rover (Υποσύστημα Γ)
-
-### POST `/api/v1/oximata/rover_01/anaklisi/proepiskopisi`
-Αξιολογεί την πολυδιάστατη εφικτότητα και ασφάλεια επιστροφής του rover στη βάση (ενέργεια, ορατότητα, επικοινωνία).
-```bash
-curl -s -X POST http://localhost:8000/api/v1/oximata/rover_01/anaklisi/proepiskopisi \
-  -H "X-ID-Xristi: xristis_03" \
-  -H "X-Rolos: xeiristis_oximatos"
-```
-**Απόκριση σε κανονικές συνθήκες (200 OK):**
-```json
-{
-  "apostasi_km": 2.0,
-  "taxytita_kmh": 4.0,
-  "xronos_epistrofis_wres": 0.5,
-  "xronos_epistrofis_lepta": 30.0,
-  "apaitoumeni_energeia_kwh": 0.3,
-  "energeia_meta_epistrofi_kwh": 0.5,
-  "energeiaka_efikto": true,
-  "oratotita_asfalis": true,
-  "epikoinwnia_asfalis": true,
-  "synolika_asfalis_epistrofi": true,
-  "proeidopoiiseis": [],
-  "id_oximatos": "rover_01",
-  "onoma_oximatos": "Εξερευνητικό Όχημα Αίολος (Rover-1)",
-  "ekdosi_katastasis": 1
-}
-```
-*Σημείωση:* Σε συνθήκες καταιγίδας σκόνης, η ορατότητα πέφτει στα 100 m (< 300 m όριο ασφαλείας) και το `synolika_asfalis_epistrofi` γίνεται `false`.
-
-### POST `/api/v1/oximata/rover_01/asfalis-stasi/entoles`
-Εντολή άμεσης ασφαλούς στάσης (Safe Stop) σε κατάσταση υψηλού κινδύνου.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/oximata/rover_01/asfalis-stasi/entoles \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: syntonistis" \
-  -H "X-Rolos: syntonistis_apoikias" \
-  -H "Idempotency-Key: idem-safe-01" \
-  -d '{
-    "anamenomeni_ekdosi_katastasis": 1,
-    "aitiologia": "Ορατότητα κάτω των 300m λόγω αμμοθύελλας"
-  }'
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "id_entolis": "entoli_stasis_...",
-  "id_oximatos": "rover_01",
-  "katastasi_oximatos": "asfalis_stasi",
-  "minyma": "Το όχημα τέθηκε επιτυχώς σε κατάσταση ασφαλούς στάσης."
-}
-```
-
----
-
-## 5. Σενάρια & Προσομοίωση (Scenarios & Simulation)
-
-### POST `/api/v1/senaria/kataigida-skonis/proepiskopisi`
-Υπολογίζει συγκριτικά όλες τις επιλογές καταιγίδας βάσει των στατιστικών του Golden Fixture (§6).
-```bash
-curl -s -X POST http://localhost:8000/api/v1/senaria/kataigida-skonis/proepiskopisi \
-  -H "X-ID-Xristi: xristis_04" \
-  -H "X-Rolos: syntonistis_apoikias"
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "senario": "kataigida_skonis_2026",
-  "statistika_golden_fixture": {
-    "pv_kanoniko_kw": 4.8,
-    "pv_kataigida_kw": 0.8,
-    "thermansi_kanoniki_kw": 8.0,
-    "thermansi_kataigida_kw": 10.0,
-    "autonomia_kanoniki_wres": 3.261,
-    "autonomia_xwris_pausi_wres": 1.974,
-    "autonomia_me_pausi_wres": 2.679,
-    "kerdos_autonomias_lepta": 42.29
-  },
-  "epiloges_apofasis": {
-    "kamia_allagi": {
-      "autonomia_wres": 1.974,
-      "kindynos": "ypsilos"
-    },
-    "pausi_anavlhtwn": {
-      "autonomia_wres": 2.679,
-      "kerdos_lepta": 42.29,
-      "kindynos": "metrios"
-    }
-  },
-  "apaiteitai_egkrisi_syntonisti": true
-}
-```
-
-### POST `/api/v1/prosomoiwsi/vima`
-Προχωρά το εικονικό ρολόι της αποικίας κατά καθορισμένο αριθμό λεπτών (CORE-13).
-```bash
-curl -s -X POST http://localhost:8000/api/v1/prosomoiwsi/vima \
-  -H "Content-Type: application/json" \
-  -H "X-ID-Xristi: xristis_04" \
-  -H "X-Rolos: syntonistis_apoikias" \
-  -d '{"lepta": 15}'
-```
-**Απόκριση (200 OK):**
-```json
-{
-  "simerino_vima": 1,
-  "neos_xronos": "2026-11-10T12:15:00",
-  "lepta_pou_prostethikan": 15
-}
-```
-
-### POST `/api/v1/prosomoiwsi/epanafora`
-Επαναφέρει την προσομοίωση και τις παραμέτρους στις κανονικές συνθήκες baseline.
-```bash
-curl -s -X POST http://localhost:8000/api/v1/prosomoiwsi/epanafora \
-  -H "X-ID-Xristi: syntonistis" \
-  -H "X-Rolos: syntonistis_apoikias"
-```
+Η εντολή εξαγωγής είναι `uv run --frozen python -m scripts.eksagogi_symvolaiou`. Η δοκιμή συμβολαίων απαιτεί ρητό σχήμα επιτυχίας για κάθε λειτουργία. Τα ελεύθερα, ετερογενή ιστορικά στιγμιότυπα δηλώνονται ως JSON τιμές μέσα σε συγκεκριμένα πεδία· ο εξωτερικός φάκελος της απόκρισης είναι τυποποιημένος.

@@ -3,13 +3,13 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.montela.vasi_montelwn import VasiMontelwn, XronosStigmaMixin
+from backend.app.montela.vasi_montelwn import VasiMontelwn, XronikaPedia, XronosUTC
 
 
-class Thermokipio(VasiMontelwn, XronosStigmaMixin):
+class Thermokipio(VasiMontelwn, XronikaPedia):
     """Θερμοκήπιο της αποικίας."""
 
     __tablename__ = "thermokipia"
@@ -17,6 +17,8 @@ class Thermokipio(VasiMontelwn, XronosStigmaMixin):
     id_thermokipiou: Mapped[str] = mapped_column(String(50), primary_key=True)
     onoma: Mapped[str] = mapped_column(String(100), nullable=False)
     thermokrasia_k: Mapped[float] = mapped_column(Float, default=295.0)  # ~22°C
+    diathesimi_ardefsi: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    diathesimos_fwtismos: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     ygrasia_aera: Mapped[float] = mapped_column(Float, default=0.65)  # 65%
     ekdosi_katastasis: Mapped[int] = mapped_column(Integer, default=1)
 
@@ -25,7 +27,7 @@ class Thermokipio(VasiMontelwn, XronosStigmaMixin):
     )
 
 
-class ZwniThermokipiou(VasiMontelwn, XronosStigmaMixin):
+class ZwniThermokipiou(VasiMontelwn, XronikaPedia):
     """Ζώνη καλλιέργειας εντός θερμοκηπίου."""
 
     __tablename__ = "zwnes_thermokipiou"
@@ -43,7 +45,7 @@ class ZwniThermokipiou(VasiMontelwn, XronosStigmaMixin):
     thermokipio: Mapped["Thermokipio"] = relationship("Thermokipio", back_populates="zwnes")
 
 
-class DexameniNerou(VasiMontelwn, XronosStigmaMixin):
+class DexameniNerou(VasiMontelwn, XronikaPedia):
     """Κεντρική ή τοπική δεξαμενή αποθήκευσης νερού."""
 
     __tablename__ = "dexamenes_nerou"
@@ -54,6 +56,13 @@ class DexameniNerou(VasiMontelwn, XronosStigmaMixin):
     trexwn_ogkos_l: Mapped[float] = mapped_column(Float, default=7500.0)
     efedreia_asfaleias_l: Mapped[float] = mapped_column(Float, default=1500.0)
     ekdosi_katastasis: Mapped[int] = mapped_column(Integer, default=1)
+
+    diathesimi_anakyklwsi: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    typos_nerou: Mapped[str] = mapped_column(
+        String(30), default="katharo", server_default="katharo"
+    )
+    rythmos_diarrois_l_h: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    __mapper_args__ = {"version_id_col": ekdosi_katastasis}
 
     roes: Mapped[list["RoiNerou"]] = relationship("RoiNerou", back_populates="dexameni")
 
@@ -72,12 +81,17 @@ class RoiNerou(VasiMontelwn):
     )  # eisroi, ardefsi, anakyklwsi, diarros
     rythmos_l_h: Mapped[float] = mapped_column(Float, nullable=False)
     perigrafi: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    xronos_katagrafis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_katagrafis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
+
+    id_programmatos: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    xronos_enarksis: Mapped[Optional[datetime]] = mapped_column(XronosUTC(), nullable=True)
+    xronos_liksis: Mapped[Optional[datetime]] = mapped_column(XronosUTC(), nullable=True)
+    energi: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
 
     dexameni: Mapped["DexameniNerou"] = relationship("DexameniNerou", back_populates="roes")
 
 
-class ProgrammaArdefsis(VasiMontelwn, XronosStigmaMixin):
+class ProgrammaArdefsis(VasiMontelwn, XronikaPedia):
     """Προγραμματισμένη άρδευση ζώνης θερμοκηπίου (RES-05, RES-06)."""
 
     __tablename__ = "programmata_ardefsis"
@@ -93,15 +107,17 @@ class ProgrammaArdefsis(VasiMontelwn, XronosStigmaMixin):
         String(50), ForeignKey("dexamenes_nerou.id_dexamenis"), nullable=False
     )
     posotita_nerou_l: Mapped[float] = mapped_column(Float, nullable=False)
-    xronos_enarksis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_enarksis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
     diarkeia_lepta: Mapped[int] = mapped_column(Integer, default=30)
     katastasi: Mapped[str] = mapped_column(
         String(30), default="programmatismeno"
     )  # programmatismeno, se_exelixi, oloklirothike, akyrothike
     id_proepiskopisis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    id_entolis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ektelestheisa_posotita_l: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
 
 
-class ProgrammaAnakyklwsis(VasiMontelwn, XronosStigmaMixin):
+class ProgrammaAnakyklwsis(VasiMontelwn, XronikaPedia):
     """Προγραμματισμός ανακύκλωσης γκρίζου/ακάθαρτου νερού (RES-12)."""
 
     __tablename__ = "programmata_anakyklwsis"
@@ -110,14 +126,24 @@ class ProgrammaAnakyklwsis(VasiMontelwn, XronosStigmaMixin):
     id_dexamenis: Mapped[str] = mapped_column(
         String(50), ForeignKey("dexamenes_nerou.id_dexamenis"), nullable=False
     )
+    posotita_eisodou_l: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    apwleia_l: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    isxys_kw: Mapped[float] = mapped_column(Float, default=0.2, server_default="0.2")
+    id_dexamenis_pigis: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        ForeignKey("dexamenes_nerou.id_dexamenis", name="fk_anakyklwsi_pigi_nerou"),
+        nullable=True,
+    )
+    id_entolis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ektelestheisa_posotita_l: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     posotita_anakyklwsis_l: Mapped[float] = mapped_column(Float, nullable=False)
-    xronos_enarksis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_enarksis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
     diarkeia_lepta: Mapped[int] = mapped_column(Integer, default=60)
     apodosi_anakyklwsis: Mapped[float] = mapped_column(Float, default=0.85)  # 85% ανάκτηση
     katastasi: Mapped[str] = mapped_column(String(30), default="programmatismeno")
 
 
-class ProgrammaFwtismou(VasiMontelwn, XronosStigmaMixin):
+class ProgrammaFwtismou(VasiMontelwn, XronikaPedia):
     """Προγραμματισμός τεχνητού φωτισμού θερμοκηπίου (RES-13)."""
 
     __tablename__ = "programmata_fwtismou"
@@ -130,12 +156,17 @@ class ProgrammaFwtismou(VasiMontelwn, XronosStigmaMixin):
         String(50), ForeignKey("zwnes_thermokipiou.id_zwnis"), nullable=False
     )
     isxys_kw: Mapped[float] = mapped_column(Float, default=2.0)
-    xronos_enarksis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    xronos_liksis: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xronos_enarksis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
+    xronos_liksis: Mapped[datetime] = mapped_column(XronosUTC(), nullable=False)
     katastasi: Mapped[str] = mapped_column(String(30), default="programmatismeno")
 
+    id_entolis: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ektelestheisa_energeia_kwh: Mapped[float] = mapped_column(
+        Float, default=0.0, server_default="0"
+    )
 
-class Fwtovoltaiko(VasiMontelwn, XronosStigmaMixin):
+
+class Fwtovoltaiko(VasiMontelwn, XronikaPedia):
     """Φωτοβολταϊκή συστοιχία παραγωγής ηλεκτρικής ισχύος."""
 
     __tablename__ = "fwtovoltaika"
@@ -153,7 +184,7 @@ class Fwtovoltaiko(VasiMontelwn, XronosStigmaMixin):
     isxys_paragwgis_w: Mapped[float] = mapped_column(Float, default=4800.0)
 
 
-class Syssoreftis(VasiMontelwn, XronosStigmaMixin):
+class Syssoreftis(VasiMontelwn, XronikaPedia):
     """Συσσωρευτής αποθήκευσης ενέργειας (μπαταρία αποικίας)."""
 
     __tablename__ = "syssoreftes"
@@ -168,7 +199,7 @@ class Syssoreftis(VasiMontelwn, XronosStigmaMixin):
     katastasi: Mapped[str] = mapped_column(String(30), default="kanoniki_leitourgia")
 
 
-class EnergeiakoFortio(VasiMontelwn, XronosStigmaMixin):
+class EnergeiakoFortio(VasiMontelwn, XronikaPedia):
     """Ηλεκτρικό φορτίο της αποικίας ανά εγκατάσταση."""
 
     __tablename__ = "energeiaka_fortia"

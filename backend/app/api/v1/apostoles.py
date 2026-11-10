@@ -1,208 +1,381 @@
-"""Διαδρομές υποσυστήματος Γ: οχήματα εξερεύνησης (rover), αποστολές και κίνδυνοι (MISSION-01…08)."""
+"""Συμβόλαια τηλεμετρίας, σχεδίων διαδρομής και επιβεβαιωμένων εντολών rover."""
 
-import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Header
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 from sqlalchemy.orm import Session
 
-from backend.app.pyrinas.asfaleia import (
-    DedomenaXristi,
-    RolosXristi,
-    apaitisi_rolou,
-)
-from backend.app.pyrinas.sfalmata import KodikosSfalmatos, SfalmaDomain
+from backend.app.pyrinas.asfaleia import DedomenaXristi, RolosXristi, apaitisi_rolou
 from backend.app.vasi.synthesi import pare_synedria_vasis
 from backend.app.ypiresies.ypiresia_apostolwn import YpiresiaApostolwn
 
-router = APIRouter(tags=["Αποστολές & Rover (Υποσύστημα Γ)"])
+dromologitis = APIRouter(tags=["Αποστολές & Rover (Υποσύστημα Γ)"])
 
 
-class AitimaDimiourgiasApostolis(BaseModel):
-    """Αίτημα προγραμματισμού νέας αποστολής rover."""
+class VasikoSxhmaOximatos(BaseModel):
+    """Αυστηρό σχήμα αιτήματος με πεπερασμένες φυσικές ποσότητες."""
 
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+
+class ShmeioSxediou(VasikoSxhmaOximatos):
+    syntetagmeni_x: FiniteFloat = 0
+    syntetagmeni_y: FiniteFloat = 0
+    apostasi_apo_proigoumeno_m: FiniteFloat = Field(gt=0, le=100_000)
+    klisi_rad: FiniteFloat = Field(default=0, ge=-1.0471975511965976, le=1.0471975511965976)
+
+
+class AitimaDimiourgiasApostolis(VasikoSxhmaOximatos):
+    titlos: str = Field(min_length=1, max_length=100)
+    skopos: str = Field(min_length=1, max_length=5000)
+    apostasi_km: FiniteFloat = Field(gt=0, le=100)
+    ektimwmeni_diarkeia_wres: FiniteFloat = Field(gt=0, le=72, default=1)
+    maza_fortiou_kg: FiniteFloat = Field(ge=0, le=1000, default=0)
+    plithos_plirwmatos: int = Field(ge=0, le=6, default=0)
+    shmeia_diadromis: list[ShmeioSxediou] = Field(default_factory=list, max_length=100)
+
+
+class AitimaEpivevaiwsisOximatos(VasikoSxhmaOximatos):
+    id_proepiskopisis: str = Field(min_length=1, max_length=50)
+
+
+class ApantisiEntolisOximatos(BaseModel):
+    id_entolis: str
+    id_oximatos: str
+    id_apostolis: str | None = None
+    katastasi_entolis: str | None = None
+    katastasi_oximatos: str | None = None
+    katastasi: str | None = None
+    minyma: str
+
+
+class ApantisiAnavolis(BaseModel):
+    id_apostolis: str
+    id_oximatos: str
+    katastasi: str
+    id_entolis: str
+    minyma: str
+
+
+class TilemetriaOximatos(BaseModel):
+    xwritikotita_energeias_kwh: float
+    isxys_fortisis_kw: float
+    id_oximatos: str
+    onoma: str
+    maza_kg: float
+    maza_fortiou_kg: float
+    plithos_plirwmatos: int
+    syntetagmeni_x: float
+    syntetagmeni_y: float
+    apostasi_apo_vasi_km: float
+    taxytita_kmh: float
+    energeia_kwh: float
+    efedreia_kwh: float
+    mesi_isxys_kw: float
+    isxys_kinisis_kw: float
+    voithitiki_isxys_w: float
+    katastasi_oximatos: str
+    katastasi_epikoinwnias: str
+    kathysterisi_epikoinwnias_s: float
+    katastasi_plirwmatos: str
+    ekdosi_katastasis: int
+    eidos: str
+    pigi: str
+    xronos_metrisis: datetime
+    poiotita: str
+    avevaiotita: str | None
+
+
+class KatastasiKinisis(BaseModel):
+    apostasi_km: float
+    taxytita_kmh: float
+    katastasi: str
+
+
+class KatastasiEnergeiasOximatos(BaseModel):
+    trexousa_kwh: float
+    efedreia_kwh: float
+    diathesimi_panw_apo_efedreia_kwh: float
+    mesi_isxys_kw: float
+    isxys_kinisis_kw: float
+
+
+class KatastasiEpikoinwniasOximatos(BaseModel):
+    katastasi: str
+    kathysterisi_s: float
+
+
+class ShmeioApantisis(ShmeioSxediou):
+    seira: int
+
+
+class ApostoliApantisi(BaseModel):
+    id_apostolis: str
     titlos: str
     skopos: str
-    apostasi_km: float = Field(gt=0, default=2.0)
-    ektimwmeni_diarkeia_wres: float = Field(gt=0, default=1.0)
+    katastasi: str
+    apostasi_km: float
+    ektimwmeni_diarkeia_wres: float
+    apaitoumeni_energeia_kwh: float
+    energeia_katanalwtheisa_kwh: float
+    maza_fortiou_kg: float
+    plithos_plirwmatos: int
+    xronos_enarksis: datetime
+    xronos_oloklirwsis: datetime | None
+    shmeia_diadromis: list[ShmeioApantisis]
 
 
-@router.get("/kindynoi", summary="Ροή εξωτερικών περιβαλλοντικών κινδύνων (MISSION-01)")
-def pare_kindynous(synedria: Session = Depends(pare_synedria_vasis)) -> List[Dict[str, Any]]:
-    """Επιστρέφει μετρήσεις και προβλέψεις καταιγίδας, ορατότητας και ακτινοβολίας."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.pare_kindynous()
+class KatastasiOximatos(TilemetriaOximatos):
+    kinisi: KatastasiKinisis
+    energeia: KatastasiEnergeiasOximatos
+    epikoinwnia: KatastasiEpikoinwniasOximatos
+    apostoles: list[ApostoliApantisi]
 
 
-@router.get("/oximata", summary="Λίστα και τηλεμετρία οχημάτων εξερεύνησης (MISSION-02)")
-def pare_oximata(synedria: Session = Depends(pare_synedria_vasis)) -> List[Dict[str, Any]]:
-    """Επιστρέφει τα ενεργά οχήματα rover, θέση, ταχύτητα, ενέργεια και κατάσταση επικοινωνίας."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.pare_oximata()
+class KindynosApantisi(BaseModel):
+    id_kindynou: str
+    typos: str
+    oratotita_m: float
+    epipedo_aktinovolias: float
+    monada_aktinovolias: str
+    sovarotita: str
+    eidos_dedomenwn: str
+    pigi: str
+    apolyti_avevaiotita: float | None
+    energi: bool
+    perigrafi: str
+    xronos: datetime
 
 
-@router.get("/oximata/{id_oximatos}/apostoles", summary="Ιστορικό αποστολών οχήματος (MISSION-02)")
-def pare_apostoles_oximatos(
-    id_oximatos: str,
-    synedria: Session = Depends(pare_synedria_vasis),
-) -> Dict[str, Any]:
-    """Επιστρέφει την κατάσταση του rover και όλες τις αποστολές του."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.pare_katastasi_oximatos(id_oximatos)
+class PerivallonOximatos(BaseModel):
+    poiotita: str
+    oratotita_m: float | None
+    aktinovolia_msv_h: float | None
+    proskrousi: bool
+    id_kindynwn: list[str]
 
 
-@router.post(
+class ProepiskopisiAnaklisis(BaseModel):
+    id_proepiskopisis: str
+    xronos_dimiourgias: datetime
+    xronos_liksis_proepiskopisis: datetime
+    id_oximatos: str
+    onoma_oximatos: str
+    ekdosi_katastasis: int
+    apostasi_km: float
+    taxytita_kmh: float
+    xronos_epistrofis_wres: float
+    xronos_epistrofis_lepta: float
+    apaitoumeni_energeia_kwh: float
+    energeia_meta_epistrofi_kwh: float
+    energeiaka_efikto: bool
+    oratotita_asfalis: bool
+    epikoinwnia_asfalis: bool
+    synolika_asfalis_epistrofi: bool
+    aktinovolia_asfalis: bool
+    proskrousi_asfalis: bool
+    diadromi_asfalis: bool
+    katastasi_epikoinwnias: str
+    kathysterisi_epikoinwnias_s: float
+    perivallon: PerivallonOximatos
+    paradoxes: list[str]
+    id_montelou: str
+    eidos: str
+    xronos_metrisis: datetime
+    proeidopoiiseis: list[str]
+    apaiteitai_epivevaiwsi: bool
+
+
+class EpiptwseisStasis(BaseModel):
+    kinisi: str
+    energeia: str
+    asfaleia: str
+    apostoli: str
+
+
+class ProepiskopisiStasis(BaseModel):
+    id_proepiskopisis: str
+    xronos_dimiourgias: datetime
+    xronos_liksis_proepiskopisis: datetime
+    id_oximatos: str
+    onoma: str
+    trexousa_katastasi: str
+    protinomeni_drasi: str
+    ekdosi_katastasis: int
+    katastasi_epikoinwnias: str
+    kathysterisi_epikoinwnias_s: float
+    epiptwseis: EpiptwseisStasis
+    proeidopoiiseis: list[str]
+    apaiteitai_epivevaiwsi: bool
+
+
+class TmimaProsomoiwsis(BaseModel):
+    enarksi_wres: float
+    liksi_wres: float
+    energeia_kwh: float
+    x_arxi_m: float
+    y_arxi_m: float
+    x_telos_m: float
+    y_telos_m: float
+    apostasi_arxi_m: float
+    apostasi_telos_m: float
+
+
+class ProepiskopisiSxediou(BaseModel):
+    id_proepiskopisis: str
+    xronos_dimiourgias: datetime
+    xronos_liksis_proepiskopisis: datetime
+    id_oximatos: str
+    zitoumeni: AitimaDimiourgiasApostolis
+    tmimata_prosomoiwsis: list[TmimaProsomoiwsis]
+    apostasi_km: float
+    synoliki_diadromi_km: float
+    xronos_kinisis_wres: float
+    ektimwmeni_diarkeia_wres: float
+    ektimwmeni_energeia_kwh: float
+    diathesimi_energeia_oximatos_kwh: float
+    energeia_meta_epistrofi_kwh: float
+    energeiaka_efikto: bool
+    diadromi_asfalis: bool
+    epikoinwnia_asfalis: bool
+    paradoxes: list[str]
+    id_montelou: str
+    apaiteitai_epivevaiwsi: bool
+    proeidopoiiseis: list[str]
+
+
+Synedria = Annotated[Session, Depends(pare_synedria_vasis)]
+Xeiristis = Annotated[
+    DedomenaXristi,
+    Depends(apaitisi_rolou(RolosXristi.YPEFTHYNOS_APOSTOLWN, RolosXristi.SYNTONISTIS_APOIKIAS)),
+]
+Kleidi = Annotated[str | None, Header(alias="Idempotency-Key", max_length=100)]
+
+
+@dromologitis.get(
+    "/kindynoi",
+    response_model=list[KindynosApantisi],
+    summary="Μετρήσεις και προβλέψεις εξωτερικών κινδύνων",
+)
+def pare_kindynous(synedria: Synedria):
+    return YpiresiaApostolwn(synedria).pare_kindynous()
+
+
+@dromologitis.get(
+    "/oximata",
+    response_model=list[TilemetriaOximatos],
+    summary="Τηλεμετρία οχημάτων, επικοινωνία και πλήρωμα",
+)
+def pare_oximata(synedria: Synedria):
+    return YpiresiaApostolwn(synedria).pare_oximata()
+
+
+@dromologitis.get(
+    "/oximata/{id_oximatos}/apostoles",
+    response_model=KatastasiOximatos,
+    summary="Κατάσταση οχήματος και αποθηκευμένες διαδρομές",
+)
+def pare_apostoles_oximatos(id_oximatos: str, synedria: Synedria):
+    return YpiresiaApostolwn(synedria).pare_katastasi_oximatos(id_oximatos)
+
+
+@dromologitis.post(
     "/oximata/{id_oximatos}/apostoles/proepiskopisi",
-    summary="Προεπισκόπηση ενεργειακής απαίτησης αποστολής (MISSION-03)",
+    response_model=ProepiskopisiSxediou,
+    summary="Προεπισκόπηση πλήρους ενεργειακού κόστους αποστολής",
 )
 def proepiskopisi_apostolis(
-    id_oximatos: str,
-    aitima: AitimaDimiourgiasApostolis,
-    synedria: Session = Depends(pare_synedria_vasis),
-) -> Dict[str, Any]:
-    """Υπολογίζει μη μεταλλακτικά την απαιτούμενη ενέργεια κίνησης."""
-    from backend.app.fysika_montela.fysika_montela import ypologise_energeia_kinisis_oximatos
-
-    apothiki = YpiresiaApostolwn(synedria).apothiki_apostolwn
-    oxima = apothiki.pare_oxima_ana_id(id_oximatos)
-    if not oxima:
-        raise SfalmaDomain(
-            kodikos=KodikosSfalmatos.DEN_VRETHIKE,
-            minyma=f"Το όχημα '{id_oximatos}' δεν βρέθηκε.",
-            katastasi_http=404,
-        )
-
-    _, _, synoliki_kwh = ypologise_energeia_kinisis_oximatos(
-        maza_kg=oxima.maza_kg,
-        apostasi_m=aitima.apostasi_km * 1000.0,
+    id_oximatos: str, aitima: AitimaDimiourgiasApostolis, synedria: Synedria, xristis: Xeiristis
+):
+    apantisi = YpiresiaApostolwn(synedria).proepiskopisi_apostolis(
+        id_oximatos, aitima.model_dump(mode="json"), xristis
     )
-
-    return {
-        "id_oximatos": id_oximatos,
-        "apostasi_km": aitima.apostasi_km,
-        "ektimwmeni_energeia_kwh": round(synoliki_kwh, 4),
-        "diathesimi_energeia_oximatos_kwh": oxima.energeia_kwh,
-        "energeiaka_efikto": oxima.energeia_kwh >= synoliki_kwh + oxima.efedreia_kwh,
-    }
+    synedria.commit()
+    return apantisi
 
 
-@router.post(
+@dromologitis.post(
     "/oximata/{id_oximatos}/apostoles",
-    summary="Δημιουργία και επιβεβαίωση αποστολής (MISSION-04)",
+    response_model=ApantisiEntolisOximatos,
+    response_model_exclude_none=True,
+    summary="Επιβεβαίωση προεπισκόπησης σχεδίου αποστολής",
 )
 def dimiourgia_apostolis(
     id_oximatos: str,
-    aitima: AitimaDimiourgiasApostolis,
-    synedria: Session = Depends(pare_synedria_vasis),
-    xristis: DedomenaXristi = Depends(
-        apaitisi_rolou(RolosXristi.YPEFTHYNOS_APOSTOLWN, RolosXristi.SYNTONISTIS_APOIKIAS)
-    ),
-) -> Dict[str, Any]:
-    """Καταχωρίζει νέα αποστολή εξερεύνησης για το rover."""
-    from backend.app.montela.apostoles import ApostoliOximatos
-
-    id_ap = f"apost_{uuid.uuid4().hex[:8]}"
-    twrinos = datetime.now(timezone.utc)
-
-    apostoli = ApostoliOximatos(
-        id_apostolis=id_ap,
-        id_oximatos=id_oximatos,
-        titlos=aitima.titlos,
-        skopos=aitima.skopos,
-        katastasi_apostolis="se_exelixi",
-        xronos_enarksis=twrinos,
+    aitima: AitimaEpivevaiwsisOximatos,
+    synedria: Synedria,
+    xristis: Xeiristis,
+    kleidi: Kleidi = None,
+):
+    return YpiresiaApostolwn(synedria).dimiourgia_apostolis(
+        id_oximatos, aitima.id_proepiskopisis, xristis, kleidi
     )
-    synedria.add(apostoli)
-    synedria.commit()
-    return {
-        "id_apostolis": id_ap,
-        "id_oximatos": id_oximatos,
-        "katastasi": "se_exelixi",
-        "minyma": "Η αποστολή καταχωρίστηκε επιτυχώς.",
-    }
 
 
-@router.post(
+@dromologitis.post(
     "/oximata/{id_oximatos}/anaklisi/proepiskopisi",
-    summary="Προεπισκόπηση ανάκλησης rover και πολυδιάστατη ασφάλεια (MISSION-03, MISSION-05, §6)",
+    response_model=ProepiskopisiAnaklisis,
+    summary="Ενέργεια, διαδρομή και επικοινωνία επιστροφής",
 )
-def proepiskopisi_anaklisis(
-    id_oximatos: str,
-    synedria: Session = Depends(pare_synedria_vasis),
-) -> Dict[str, Any]:
-    """Υπολογίζει χρόνο, απαιτούμενη ενέργεια και αξιολογεί χωριστά ενέργεια, ορατότητα και επικοινωνία."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.proepiskopisi_anaklisis(id_oximatos)
+def proepiskopisi_anaklisis(id_oximatos: str, synedria: Synedria, xristis: Xeiristis):
+    apantisi = YpiresiaApostolwn(synedria).proepiskopisi_anaklisis(id_oximatos, xristis)
+    synedria.commit()
+    return apantisi
 
 
-@router.post(
+@dromologitis.post(
     "/oximata/{id_oximatos}/anaklisi/entoles",
-    summary="Εντολή ανάκλησης rover στη βάση (MISSION-04, MISSION-06)",
+    response_model=ApantisiEntolisOximatos,
+    response_model_exclude_none=True,
+    summary="Επιβεβαίωση ανάκλησης με ορατή κατάσταση παραλαβής",
 )
 def ektelesi_anaklisis(
     id_oximatos: str,
-    synedria: Session = Depends(pare_synedria_vasis),
-    xristis: DedomenaXristi = Depends(
-        apaitisi_rolou(RolosXristi.YPEFTHYNOS_APOSTOLWN, RolosXristi.SYNTONISTIS_APOIKIAS)
-    ),
-) -> Dict[str, Any]:
-    """Εκτελεί εντολή ανάκλησης (κατάσταση 'avevaio' αν η επικοινωνία είναι υποβαθμισμένη)."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.ektelesi_anaklisis(id_oximatos, xristis)
+    aitima: AitimaEpivevaiwsisOximatos,
+    synedria: Synedria,
+    xristis: Xeiristis,
+    kleidi: Kleidi = None,
+):
+    return YpiresiaApostolwn(synedria).ektelesi_anaklisis(
+        id_oximatos, xristis, aitima.id_proepiskopisis, kleidi
+    )
 
 
-@router.post(
+@dromologitis.post(
     "/oximata/{id_oximatos}/asfalis-stasi/proepiskopisi",
-    summary="Προεπισκόπηση επιλογών ασφαλούς στάσης rover (MISSION-08)",
+    response_model=ProepiskopisiStasis,
+    summary="Συνέπειες ακινητοποίησης πριν από επιβεβαίωση",
 )
-def proepiskopisi_asfalous_stasis(
-    id_oximatos: str,
-    synedria: Session = Depends(pare_synedria_vasis),
-) -> Dict[str, Any]:
-    """Εμφανίζει τις συνέπειες ασφαλούς στάσης πριν την επιβεβαίωση της εντολής."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.proepiskopisi_asfalous_stasis(id_oximatos)
+def proepiskopisi_asfalous_stasis(id_oximatos: str, synedria: Synedria, xristis: Xeiristis):
+    apantisi = YpiresiaApostolwn(synedria).proepiskopisi_asfalous_stasis(id_oximatos, xristis)
+    synedria.commit()
+    return apantisi
 
 
-@router.post(
+@dromologitis.post(
     "/oximata/{id_oximatos}/asfalis-stasi/entoles",
-    summary="Εκτέλεση εντολής ασφαλούς στάσης rover (MISSION-04, MISSION-08)",
+    response_model=ApantisiEntolisOximatos,
+    response_model_exclude_none=True,
+    summary="Ασφαλής στάση μετά από επιβεβαιωμένη παραλαβή",
 )
 def ektelesi_asfalous_stasis(
     id_oximatos: str,
-    synedria: Session = Depends(pare_synedria_vasis),
-    xristis: DedomenaXristi = Depends(
-        apaitisi_rolou(RolosXristi.YPEFTHYNOS_APOSTOLWN, RolosXristi.SYNTONISTIS_APOIKIAS)
-    ),
-) -> Dict[str, Any]:
-    """Θέτει το όχημα σε ασφαλή στάση, μειώνει ισχύ και καταγράφει εντολή."""
-    ypiresia = YpiresiaApostolwn(synedria)
-    return ypiresia.ektelesi_asfalous_stasis(id_oximatos, xristis)
+    aitima: AitimaEpivevaiwsisOximatos,
+    synedria: Synedria,
+    xristis: Xeiristis,
+    kleidi: Kleidi = None,
+):
+    return YpiresiaApostolwn(synedria).ektelesi_asfalous_stasis(
+        id_oximatos, xristis, aitima.id_proepiskopisis, kleidi
+    )
 
 
-@router.post(
+@dromologitis.post(
     "/oximata/{id_oximatos}/apostoles/{id_apostolis}/anavoli",
-    summary="Αναβολή αποστολής rover (MISSION-04)",
+    response_model=ApantisiAnavolis,
+    summary="Αναβολή αποστολής πριν από την αναχώρηση",
 )
-def anavoli_apostolis(
-    id_apostolis: str,
-    synedria: Session = Depends(pare_synedria_vasis),
-    xristis: DedomenaXristi = Depends(
-        apaitisi_rolou(RolosXristi.YPEFTHYNOS_APOSTOLWN, RolosXristi.SYNTONISTIS_APOIKIAS)
-    ),
-) -> Dict[str, Any]:
-    """Αναβάλλει εκκρεμή αποστολή λόγω συνθηκών."""
-    from backend.app.montela.apostoles import ApostoliOximatos
-
-    apostoli = synedria.get(ApostoliOximatos, id_apostolis)
-    if not apostoli:
-        raise SfalmaDomain(
-            kodikos=KodikosSfalmatos.DEN_VRETHIKE,
-            minyma=f"Η αποστολή '{id_apostolis}' δεν βρέθηκε.",
-            katastasi_http=404,
-        )
-    apostoli.katastasi_apostolis = "anavolh"
-    synedria.commit()
-    return {"id_apostolis": id_apostolis, "katastasi": "anavolh"}
+def anavoli_apostolis(id_oximatos: str, id_apostolis: str, synedria: Synedria, xristis: Xeiristis):
+    return YpiresiaApostolwn(synedria).anavoli_apostolis(id_oximatos, id_apostolis, xristis)

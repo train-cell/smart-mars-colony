@@ -19,15 +19,15 @@ dokimastiki_mixani = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
-    json_serializer=lambda obj: json.dumps(obj, default=str),
+    json_serializer=lambda dedomena: json.dumps(dedomena, default=str),
 )
 
 
 @event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+def rythmise_ksenous_desmous(syndesi_dokimwn, eggrafi_syndesis):
+    dromeas = syndesi_dokimwn.cursor()
+    dromeas.execute("PRAGMA foreign_keys=ON")
+    dromeas.close()
 
 
 DokimastikiSynedria = sessionmaker(autocommit=False, autoflush=False, bind=dokimastiki_mixani)
@@ -52,9 +52,13 @@ def pelatis_dokimwn(synedria_dokimwn: Session):
     """Επιστρέφει TestClient με αντικατάσταση του database dependency."""
 
     def paroxeas_dokimastikis_synedrias():
-        yield synedria_dokimwn
+        try:
+            yield synedria_dokimwn
+        except Exception:
+            synedria_dokimwn.rollback()
+            raise
 
     efarmogi.dependency_overrides[pare_synedria_vasis] = paroxeas_dokimastikis_synedrias
-    with TestClient(efarmogi) as pelatis:
+    with TestClient(efarmogi, headers={"X-Id-Xristi": "syntonistis"}) as pelatis:
         yield pelatis
     efarmogi.dependency_overrides.clear()
